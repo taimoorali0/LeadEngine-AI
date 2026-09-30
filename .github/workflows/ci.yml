@@ -1,0 +1,24 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  python-engine:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: python-engine } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -v ON_ERROR_STOP=1 -f database/schema.sql -f database/seed.sql
+        env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: postgres }

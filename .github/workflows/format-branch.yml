@@ -1,0 +1,27 @@
+name: Format working branch
+on:
+  push:
+    branches: [chatgpt/saas-redesign-phase1]
+permissions:
+  contents: write
+jobs:
+  pint:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/saas-redesign-phase1
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: "8.3" }
+      - run: cd backend && composer install --no-interaction --no-progress
+      - run: cd backend && vendor/bin/pint
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply Laravel Pint"
+            git push origin HEAD:chatgpt/saas-redesign-phase1
+          fi

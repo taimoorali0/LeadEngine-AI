@@ -103,7 +103,7 @@ import { Keyword, Location } from '../core/models';
               <div class="mt-5">
                 <label class="label">{{ 'Coverage' | t }}</label>
                 <div class="grid gap-3 sm:grid-cols-2">
-                  <button type="button" (click)="coverageMode='whole_city'; selectedAreas.set(new Set())"
+                  <button type="button" (click)="chooseWholeCity()"
                           class="rounded-2xl border p-4 text-start transition"
                           [class]="coverageMode === 'whole_city' ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-100' : 'border-slate-200 hover:border-slate-300'">
                     <div class="font-semibold text-slate-900">◎ {{ 'Whole City' | t }}</div>
@@ -123,7 +123,7 @@ import { Keyword, Location } from '../core/models';
               <div class="mt-4 rounded-2xl bg-slate-50 p-4">
                 <div class="mb-3 flex items-center justify-between">
                   <div><div class="font-semibold text-slate-900">{{ 'Select areas' | t }}</div><div class="text-xs text-slate-500">{{ selectedAreas().size }} {{ 'selected' | t }}</div></div>
-                  <button type="button" class="text-xs font-semibold text-violet-700" (click)="selectedAreas.set(new Set())">{{ 'Clear' | t }}</button>
+                  <button type="button" class="text-xs font-semibold text-violet-700" (click)="clearAreas()">{{ 'Clear' | t }}</button>
                 </div>
                 <div class="flex max-h-56 flex-wrap gap-2 overflow-y-auto">
                   @for (a of areas(); track a.id) {
@@ -275,8 +275,21 @@ export class CampaignBuilderPage {
     if (id) this.api.locations(id).subscribe(r => this.areas.set(r));
   }
 
+  chooseWholeCity() {
+    this.coverageMode = 'whole_city';
+    this.clearAreas();
+  }
+
+  clearAreas() {
+    this.selectedAreas.set(new Set<number>());
+    this.preview.set(null);
+  }
+
   toggleArea(id: number) {
-    const s = new Set(this.selectedAreas()); s.has(id) ? s.delete(id) : s.add(id); this.selectedAreas.set(s); this.preview.set(null);
+    const s = new Set(this.selectedAreas());
+    s.has(id) ? s.delete(id) : s.add(id);
+    this.selectedAreas.set(s);
+    this.preview.set(null);
   }
 
   suggest() {

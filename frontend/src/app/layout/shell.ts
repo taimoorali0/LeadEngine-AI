@@ -179,6 +179,7 @@ export class Shell {
   private readonly platformNav: NavGroup[] = [
     { title: 'Platform', items: [
       { path: '/dashboard', label: 'Platform Dashboard', icon: '⌂' },
+      { path: '/platform/organizations', label: 'Organizations', icon: '▦' },
       { path: '/platform/billing', label: 'Billing Requests', icon: '◇' },
       { path: '/admin/costs', label: 'API & Cost Dashboard', icon: '◫' },
       { path: '/team', label: 'Users & Teams', icon: '♙' },

@@ -29,6 +29,7 @@ export const routes: Routes = [
       { path: 'settings', ...page(() => import('./pages/settings').then(m => m.SettingsPage)) },
       { path: 'plan', ...page(() => import('./pages/plan-usage').then(m => m.PlanUsagePage)) },
       { path: 'platform/billing', ...page(() => import('./pages/platform-billing').then(m => m.PlatformBillingPage)) },
+      { path: 'platform/organizations', ...page(() => import('./pages/platform-organizations').then(m => m.PlatformOrganizationsPage)) },
       { path: 'admin/costs', ...page(() => import('./pages/admin-costs').then(m => m.AdminCostsPage)) },
       { path: 'account', ...page(() => import('./pages/account').then(m => m.AccountPage)) },
     ],

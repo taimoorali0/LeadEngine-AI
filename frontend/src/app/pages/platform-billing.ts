@@ -21,7 +21,7 @@ import { Api } from '../core/api';
               <tr class="border-t border-slate-100">
                 <td class="td"><div class="font-semibold text-slate-900">{{ r.organization?.name }}</div><div class="text-xs text-slate-500">{{ r.requester?.name }} · {{ r.requester?.email }}</div></td>
                 <td class="td"><div class="font-semibold">{{ label(r.type) }}</div><div class="text-xs text-slate-500">{{ r.requested_plan || (r.requested_credits ? (r.requested_credits | number) + ' credits' : '') }}</div></td>
-                <td class="td"><div>{{ r.amount ? (r.amount | number:'1.0-2') + ' ' + r.currency : '—' }}</div><div class="text-xs text-slate-500">{{ r.payment_method || '' }} {{ r.transaction_reference || '' }}</div>@if(r.payment_proof_url){<a class="mt-1 inline-block text-xs font-semibold text-violet-700" [href]="r.payment_proof_url" target="_blank" rel="noopener">View proof ↗</a>}</td>
+                <td class="td"><div>{{ r.amount ? (r.amount | number:'1.0-2') + ' ' + r.currency : '—' }}</div><div class="text-xs text-slate-500">{{ r.payment_method || '' }} {{ r.transaction_reference || '' }}</div>@if(r.payment_proof_path){<button type="button" class="mt-1 text-xs font-semibold text-violet-700" (click)="openProof(r)">View proof ↗</button>}</td>
                 <td class="td">{{ r.created_at | date:'medium' }}</td>
                 <td class="td"><span class="badge" [class]="statusClass(r.status)">{{ label(r.status) }}</span></td>
                 <td class="td text-end">
@@ -52,6 +52,14 @@ export class PlatformBillingPage implements OnInit {
   review(r: any, status: string) {
     const note = status === 'approved' ? '' : (prompt('Admin note (optional):') ?? '');
     this.api.reviewBillingRequest(r.id, { status, admin_note: note }).subscribe(() => this.load());
+  }
+
+  openProof(r: any) {
+    this.api.billingProof(r.id).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    });
   }
   label = (s: string) => (s ?? '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   statusClass(s: string) { return s === 'approved' ? 'bg-emerald-100 text-emerald-700' : s === 'rejected' ? 'bg-rose-100 text-rose-700' : s === 'needs_info' ? 'bg-amber-100 text-amber-700' : 'bg-violet-100 text-violet-700'; }

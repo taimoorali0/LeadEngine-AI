@@ -32,10 +32,18 @@ Angular PWA (app.leadengine)  →  Laravel API (api.leadengine)  →  Redis queu
 
 ## Phases
 
-1. **Foundation**: auth, roles, users, companies, industries, locations, campaigns, basic leads *(schema done)*
-2. **Google discovery**: Places connector, geo search grid, keyword generator *(baseline done)*, progress, dedup *(engine done)*
+1. **Foundation**: auth, roles, users, companies, industries, locations, campaigns, basic leads *(done)*
+2. **Google discovery**: Places connector, area-based search, keyword generator, progress (polling), dedup *(done; auto-generated geo grid and live WebSockets/Reverb pending)*
 3. **Python enrichment**: crawler *(basic multi-page version done)*, phone/email/social extraction *(done)*, AI summary and classification
-4. **CRM**: statuses, Kanban, assignments, notes, follow-ups, activities, notifications
+4. **CRM**: statuses, Kanban, assignments, notes, follow-ups, activities *(done)*; notifications pending
 5. **Intelligence**: AI summaries, opportunity classification, campaign analytics
 6. **Automation**: rules engine, auto-assignment, scheduled refresh, new-business alerts
 7. **SaaS**: plans, billing, credits, onboarding
+
+## Not yet built
+
+- Two-factor auth, user/team management screens, settings UI
+- Notifications, Reverb live updates (campaign page polls every 3 s for now)
+- AI features (summaries, classification, opportunity detection, natural-language campaigns)
+- Translations (EN/UR/AR UI): the data model is already bilingual
+- Auto-assignment rules, automation, scheduled refresh, billing/credits UI, reports

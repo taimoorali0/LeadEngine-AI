@@ -110,6 +110,18 @@ class CampaignPipelineTest extends TestCase
         $this->assertSame(2, Company::count());
     }
 
+    public function test_run_reverts_status_when_queue_is_down(): void
+    {
+        $owner = $this->makeUser('owner');
+        $campaign = Campaign::create(['organization_id' => $owner->organization_id, 'name' => 'x', 'company_type' => 'x',
+            'country_id' => Location::where('iso_code', 'PK')->value('id')]);
+        $campaign->keywords()->create(['keyword' => 'x']);
+        Queue::shouldReceive('connection')->andThrow(new \RuntimeException('Connection refused'));
+
+        $this->actingAs($owner)->postJson("/api/campaigns/{$campaign->id}/run")->assertStatus(503);
+        $this->assertSame('draft', $campaign->fresh()->status);
+    }
+
     public function test_agent_cannot_create_campaigns(): void
     {
         $this->actingAs($this->makeUser('agent'))->postJson('/api/campaigns', [

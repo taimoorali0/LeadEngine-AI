@@ -84,9 +84,17 @@ class CampaignController extends Controller
         abort_if(in_array($campaign->status, ['queued', 'running'], true), 409, 'Campaign is already running.');
         abort_if(! $campaign->keywords()->where('enabled', true)->exists(), 422, 'Campaign has no enabled keywords.');
 
+        $previous = $campaign->status;
         $campaign->update(['status' => 'queued']);
+        try {
+            RunCampaign::dispatch($campaign);
+        } catch (\Throwable $e) {
+            // Never leave a campaign stuck in "queued" when the queue is unreachable.
+            $campaign->update(['status' => $previous]);
+            report($e);
+            abort(503, 'The job queue is unavailable. Try again shortly.');
+        }
         AuditLog::record('campaign.started', $campaign);
-        RunCampaign::dispatch($campaign);
 
         return response()->json($this->detail($campaign->fresh()), 202);
     }

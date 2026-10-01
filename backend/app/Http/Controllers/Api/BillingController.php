@@ -18,6 +18,7 @@ class BillingController extends Controller
 {
     public function show(Request $request, Billing $billing): JsonResponse
     {
+        abort_unless($request->user()->organization, 404, 'Platform administrators have no customer plan. Use the platform billing pages.');
         $org = $request->user()->organization->fresh();
         $since = now()->startOfMonth();
 
@@ -42,6 +43,7 @@ class BillingController extends Controller
      */
     public function submitRequest(Request $request): JsonResponse
     {
+        $this->authorize('billing.manage');
         $org = $request->user()->organization;
         abort_unless($org, 422, 'Organization account required.');
 
@@ -56,7 +58,9 @@ class BillingController extends Controller
             'payment_date' => 'nullable|date',
             'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:8192',
             'message' => 'nullable|string|max:2000',
+            'months' => 'nullable|integer|in:1,3,6,12',
         ]);
+        $data['months'] = in_array($data['type'], ['credits'], true) ? 1 : (int) ($data['months'] ?? 1);
 
         if ($data['type'] === 'upgrade' && empty($data['requested_plan'])) {
             return response()->json(['message' => 'Choose the requested plan.'], 422);
@@ -124,9 +128,9 @@ class BillingController extends Controller
             if ($data['status'] === 'approved') {
                 if ($billingRequest->type === 'upgrade' && $billingRequest->requested_plan) {
                     $org->update(['plan' => $billingRequest->requested_plan]);
-                    $billing->renew($org);
+                    $billing->activate($org, $billingRequest->months ?: 1);
                 } elseif (in_array($billingRequest->type, ['renewal', 'reactivation'], true)) {
-                    $billing->renew($org);
+                    $billing->activate($org, $billingRequest->months ?: 1);
                 } elseif ($billingRequest->type === 'credits' && $billingRequest->requested_credits) {
                     $billing->grant($org, $billingRequest->requested_credits, 'approved_credit_request', $request->user());
                 }

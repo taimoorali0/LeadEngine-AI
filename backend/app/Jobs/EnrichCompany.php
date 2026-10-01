@@ -28,6 +28,9 @@ class EnrichCompany implements ShouldQueue
     public function handle(EngineClient $engine, LeadScorer $scorer, Billing $billing, AutomationEngine $automation): void
     {
         $c = $this->company;
+        if ($c->organization && ! app(Billing::class)->isOperational($c->organization)) {
+            return;  // suspended or expired while queued
+        }
         try {
             $billing->charge($c->organization_id, 'website_enrichment');
         } catch (InsufficientCredits) {

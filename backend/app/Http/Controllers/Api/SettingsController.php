@@ -31,6 +31,7 @@ class SettingsController extends Controller
     public function show(Request $request): JsonResponse
     {
         $org = $request->user()->organization;
+        abort_unless($org, 404, 'Platform administrators have no organization settings.');
 
         return response()->json(['organization' => $org->only(['id', 'name', 'slug']), 'settings' => self::for($org)]);
     }
@@ -63,6 +64,7 @@ class SettingsController extends Controller
             }
         }
         $org = $request->user()->organization;
+        abort_unless($org, 404, 'Platform administrators have no organization settings.');
         if (isset($data['name'])) {
             $org->name = $data['name'];
         }

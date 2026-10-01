@@ -89,13 +89,38 @@ class Billing
     }
 
     /** Monthly renewal: top the balance up to the plan allowance (unused credits do not stack). */
+    /**
+     * Activates the organization for a paid period. Renewing early extends from the
+     * current end date, so customers never lose time they already paid for.
+     */
+    public function activate(Organization $org, int $months = 1): void
+    {
+        $org->refresh();
+        $active = in_array($org->subscription_status, ['active', 'trialing'], true);
+        $from = $active && $org->plan_renews_at?->isFuture() ? $org->plan_renews_at : now();
+        $org->forceFill([
+            'plan_renews_at' => $from->copy()->addMonths(max(1, $months)),
+            'subscription_status' => 'active',
+            'suspended_at' => null,
+            'suspension_reason' => null,
+        ])->save();
+        $this->refillCredits($org);
+    }
+
+    /** Backwards-compatible one-month activation. */
     public function renew(Organization $org): void
+    {
+        $this->activate($org, 1);
+    }
+
+    /** Monthly allowance: tops the balance up to the plan allowance (unused credits do not stack). */
+    public function refillCredits(Organization $org): void
     {
         $allowance = $this->plan($org)['monthly_credits'];
         $org->refresh();
         if ($org->credit_balance < $allowance) {
             $this->grant($org, $allowance - $org->credit_balance, 'monthly_renewal');
         }
-        $org->forceFill(['plan_renews_at' => now()->addMonth(), 'subscription_status' => 'active', 'suspended_at' => null, 'suspension_reason' => null])->save();
+        $org->forceFill(['credits_renew_at' => now()->addMonth()])->save();
     }
 }

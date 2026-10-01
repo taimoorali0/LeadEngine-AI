@@ -10,7 +10,7 @@ class BillingRequest extends Model
     protected $fillable = [
         'organization_id', 'requested_by', 'type', 'requested_plan', 'requested_credits',
         'amount', 'currency', 'payment_method', 'transaction_reference', 'payment_date',
-        'payment_proof_path', 'message', 'status', 'admin_note', 'reviewed_by', 'reviewed_at',
+        'payment_proof_path', 'message', 'months', 'status', 'admin_note', 'reviewed_by', 'reviewed_at',
     ];
 
     protected $casts = [

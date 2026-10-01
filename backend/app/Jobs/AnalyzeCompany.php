@@ -26,6 +26,9 @@ class AnalyzeCompany implements ShouldQueue
     public function handle(EngineClient $engine, Billing $billing): void
     {
         $c = $this->company;
+        if ($c->organization && ! app(Billing::class)->isOperational($c->organization)) {
+            return;  // suspended or expired while queued
+        }
         $org = $c->organization;
         $settings = SettingsController::for($org);
         if (! $settings['ai']['enabled'] || ! $billing->hasFeature($org, 'ai_analysis')) {

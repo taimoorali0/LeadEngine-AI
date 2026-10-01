@@ -48,6 +48,15 @@ Artisan::command('subscriptions:expire', function () {
     $this->info("Expired {$orgs->count()} organizations awaiting manual renewal approval.");
 })->purpose('Expire subscriptions when their approved period ends');
 
+// Monthly credit allowance for organizations whose paid period is still running.
+Artisan::command('credits:refill', function (Billing $billing) {
+    $orgs = Organization::whereIn('subscription_status', ['active', 'trialing'])
+        ->where('plan_renews_at', '>', now())
+        ->where(fn ($q) => $q->whereNull('credits_renew_at')->orWhere('credits_renew_at', '<=', now()))->get();
+    $orgs->each(fn (Organization $o) => $billing->refillCredits($o));
+    $this->info("Refilled credits for {$orgs->count()} organizations.");
+})->purpose('Grant the monthly credit allowance during an active subscription');
+
 Artisan::command('platform:create-admin {email?}', function (?string $email = null) {
     $email ??= $this->ask('Super Admin email');
     $name = $this->ask('Name', 'Platform Administrator');
@@ -77,3 +86,4 @@ Artisan::command('platform:create-admin {email?}', function (?string $email = nu
 Schedule::command('followups:remind')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('campaigns:refresh')->hourly()->withoutOverlapping();
 Schedule::command('subscriptions:expire')->dailyAt('00:30');
+Schedule::command('credits:refill')->dailyAt('00:45');

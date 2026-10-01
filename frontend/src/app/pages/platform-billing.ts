@@ -20,7 +20,7 @@ import { Api } from '../core/api';
             @for (r of rows(); track r.id) {
               <tr class="border-t border-slate-100">
                 <td class="td"><div class="font-semibold text-slate-900">{{ r.organization?.name }}</div><div class="text-xs text-slate-500">{{ r.requester?.name }} · {{ r.requester?.email }}</div></td>
-                <td class="td"><div class="font-semibold">{{ label(r.type) }}</div><div class="text-xs text-slate-500">{{ r.requested_plan || (r.requested_credits ? (r.requested_credits | number) + ' credits' : '') }}</div></td>
+                <td class="td"><div class="font-semibold">{{ label(r.type) }}</div><div class="text-xs text-slate-500">{{ r.requested_plan || (r.requested_credits ? (r.requested_credits | number) + ' credits' : '') }}@if (r.type !== 'credits') { · {{ r.months }} {{ r.months === 1 ? 'month' : 'months' }} }</div></td>
                 <td class="td"><div>{{ r.amount ? (r.amount | number:'1.0-2') + ' ' + r.currency : '—' }}</div><div class="text-xs text-slate-500">{{ r.payment_method || '' }} {{ r.transaction_reference || '' }}</div>@if(r.payment_proof_path){<button type="button" class="mt-1 text-xs font-semibold text-violet-700" (click)="openProof(r)">View proof ↗</button>}</td>
                 <td class="td">{{ r.created_at | date:'medium' }}</td>
                 <td class="td"><span class="badge" [class]="statusClass(r.status)">{{ label(r.status) }}</span></td>

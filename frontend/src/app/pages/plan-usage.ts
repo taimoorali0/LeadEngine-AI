@@ -3,6 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Api } from '../core/api';
 import { TPipe } from '../core/i18n/i18n';
+import { AuthService } from '../core/auth';
 
 @Component({
   selector: 'app-plan-usage',
@@ -16,7 +17,7 @@ import { TPipe } from '../core/i18n/i18n';
 
     @if (b(); as b) {
       <div class="grid gap-4 md:grid-cols-3">
-        <div class="card"><div class="label">{{ 'Current plan' | t }}</div><div class="text-2xl font-bold text-slate-950">{{ b.plan.name }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Renews' | t }} {{ b.renews_at ? (b.renews_at | date:'mediumDate') : '—' }}</div></div>
+        <div class="card"><div class="label">{{ 'Current plan' | t }}</div><div class="text-2xl font-bold text-slate-950">{{ b.plan.name }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Paid until' | t }} {{ b.renews_at ? (b.renews_at | date:'mediumDate') : '—' }}</div></div>
         <div class="card"><div class="label">{{ 'Credit balance' | t }}</div><div class="text-2xl font-bold text-violet-700 tabular-nums">{{ b.credit_balance | number }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Usage-based discovery and enrichment credits' | t }}</div></div>
         <div class="card"><div class="label">{{ 'Active users' | t }}</div><div class="text-2xl font-bold text-slate-950 tabular-nums">{{ b.users }} / {{ b.plan.users ?? '∞' }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Organization seats' | t }}</div></div>
       </div>
@@ -35,7 +36,7 @@ import { TPipe } from '../core/i18n/i18n';
                     <div class="text-sm text-slate-500">{{ p.value.monthly_credits | number }} {{ 'credits / month' | t }}</div>
                   </div>
                   @if (p.key === b.plan_key) { <span class="badge bg-violet-100 text-violet-700">{{ 'Current' | t }}</span> }
-                  @else { <button class="btn-ghost !px-3 !py-2" (click)="start('upgrade', p.key)">{{ 'Request upgrade' | t }}</button> }
+                  @else if (canRequest) { <button class="btn-ghost !px-3 !py-2" (click)="start('upgrade', p.key)">{{ 'Request upgrade' | t }}</button> }
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
                   <span>{{ p.value.users ?? '∞' }} {{ 'users' | t }}</span>
@@ -54,6 +55,7 @@ import { TPipe } from '../core/i18n/i18n';
         </section>
 
         <aside class="space-y-5">
+          @if (canRequest) {
           <section class="card">
             <h2 class="section-title">{{ 'Request plan action' | t }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ 'Payments are reviewed manually by the platform Super Admin.' | t }}</p>
@@ -63,6 +65,9 @@ import { TPipe } from '../core/i18n/i18n';
               <button class="btn-ghost col-span-2" (click)="start('credits')">{{ 'Request more credits' | t }}</button>
             </div>
           </section>
+          } @else {
+            <p class="card text-sm text-slate-500">{{ 'Ask your company owner to request plan changes.' | t }}</p>
+          }
 
           @if (showForm()) {
             <form class="card space-y-3" (ngSubmit)="submit()">
@@ -70,6 +75,11 @@ import { TPipe } from '../core/i18n/i18n';
               @if (type === 'upgrade') {
                 <div><label class="label">{{ 'Requested plan' | t }}</label><select class="input" [(ngModel)]="requestedPlan" name="plan">
                   @for (p of entries(b.plans); track p.key) { <option [value]="p.key">{{ p.value.name }}</option> }
+                </select></div>
+              }
+              @if (type !== 'credits') {
+                <div><label class="label">{{ 'Billing period' | t }}</label><select class="input" [(ngModel)]="months" name="months">
+                  @for (m of [1, 3, 6, 12]; track m) { <option [ngValue]="m">{{ (m === 1 ? '1 month' : '{n} months') | t: { n: m } }}</option> }
                 </select></div>
               }
               @if (type === 'credits') {
@@ -106,6 +116,8 @@ import { TPipe } from '../core/i18n/i18n';
 })
 export class PlanUsagePage implements OnInit {
   private api = inject(Api);
+  protected canRequest = inject(AuthService).can('billing.manage');
+  months = 12;
   b = signal<any>(null);
   showForm = signal(false);
   notice = signal('');
@@ -135,6 +147,7 @@ export class PlanUsagePage implements OnInit {
     const fd = new FormData();
     fd.append('type', this.type);
     if (this.type === 'upgrade') fd.append('requested_plan', this.requestedPlan);
+    if (this.type !== 'credits') fd.append('months', String(this.months));
     if (this.type === 'credits' && this.requestedCredits) fd.append('requested_credits', String(this.requestedCredits));
     if (this.amount !== null) fd.append('amount', String(this.amount));
     fd.append('currency', this.currency || 'PKR');

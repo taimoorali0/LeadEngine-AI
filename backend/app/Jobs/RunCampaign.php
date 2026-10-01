@@ -40,6 +40,11 @@ class RunCampaign implements ShouldQueue
         $billing ??= app(Billing::class);
         $automation ??= app(AutomationEngine::class);
         $campaign = $this->campaign;
+        if ($campaign->organization && ! app(Billing::class)->isOperational($campaign->organization)) {
+            $campaign->update(['status' => 'failed', 'stats' => ($campaign->stats ?? []) + ['error' => 'Subscription is not active.']]);
+
+            return;
+        }
         $keywords = $campaign->keywords()->where('enabled', true)->pluck('keyword');
         $depth = $campaign->filter('search_depth', 'standard');
         if ($depth === 'quick') {

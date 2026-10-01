@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Organization extends Model
 {
-    protected $fillable = ['name', 'slug', 'plan', 'settings', 'credit_balance', 'plan_renews_at', 'subscription_status', 'suspended_at', 'suspension_reason'];
+    protected $fillable = ['name', 'slug', 'plan', 'settings', 'credit_balance', 'plan_renews_at', 'subscription_status', 'suspended_at', 'suspension_reason', 'credits_renew_at'];
 
-    protected $casts = ['settings' => 'array', 'plan_renews_at' => 'datetime', 'suspended_at' => 'datetime'];
+    protected $casts = ['settings' => 'array', 'plan_renews_at' => 'datetime', 'suspended_at' => 'datetime', 'credits_renew_at' => 'datetime'];
 
     public function users(): HasMany
     {

@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
         DB::unprepared(file_get_contents(base_path('../database/seed.sql')));
 
         $org = Organization::create(['name' => 'Demo Company', 'slug' => 'demo', 'plan' => 'professional']);
-        app(Billing::class)->renew($org);
+        app(Billing::class)->activate($org, 12);
         User::create([
             'organization_id' => $org->id,
             'role_id' => Role::where('key', 'owner')->value('id'),

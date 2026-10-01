@@ -13,7 +13,10 @@ class DashboardController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         $leads = Lead::query()->visibleTo($request->user());
-        $companies = Company::query()->whereNull('merged_into_id');
+        $user = $request->user();
+        $companies = Company::query()->whereNull('merged_into_id')
+            ->when(! $user->isSuperAdmin() && ! $user->hasPermission('leads.view_all'),
+                fn ($q) => $q->whereHas('leads', fn ($l) => $l->where('assigned_to', $user->id)));
         $count = fn ($q, callable $f) => $f(clone $q)->count();
 
         return response()->json([

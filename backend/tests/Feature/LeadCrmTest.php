@@ -34,6 +34,7 @@ class LeadCrmTest extends TestCase
         $this->patchJson("/api/leads/{$mine->id}", ['status' => 'contacted'])->assertOk();
         $this->patchJson("/api/leads/{$mine->id}", ['assigned_to' => null])->assertForbidden();
         $this->deleteJson("/api/companies/{$mine->company_id}")->assertForbidden();
+        $this->getJson('/api/dashboard')->assertJsonPath('total_companies', 1);
     }
 
     public function test_organizations_are_isolated(): void

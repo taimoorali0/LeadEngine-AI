@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Activity, Campaign, Company, FollowUp, Industry, Keyword, Lead, Location, Page } from './models';
+import { Activity, AppNotification, AutomationRule, Campaign, Company, FollowUp, Industry, Keyword, Lead, Location, Page } from './models';
 
 type Params = Record<string, string | number | boolean | null | undefined>;
 
@@ -37,6 +37,41 @@ export class Api {
   followUps() { return this.http.get<FollowUp[]>('/api/follow-ups'); }
   completeFollowUp(id: number) { return this.http.post<FollowUp>(`/api/follow-ups/${id}/complete`, {}); }
   exportLeads(p: Params) { return this.http.get('/api/leads/export', { params: params(p), responseType: 'blob' }); }
+
+  brief(id: number) { return this.http.get<any>(`/api/leads/${id}/brief`); }
+  analyzeCompany(id: number) { return this.http.post(`/api/companies/${id}/analyze`, {}); }
+
+  notifications() { return this.http.get<{ unread: number; items: AppNotification[] }>('/api/notifications'); }
+  markRead(ids?: string[]) { return this.http.post<{ unread: number }>('/api/notifications/read', ids ? { ids } : {}); }
+
+  updateProfile(body: Record<string, unknown>) { return this.http.put<any>('/api/auth/me', body); }
+  twoFactorSetup() { return this.http.post<{ secret: string; qr_svg: string }>('/api/auth/2fa/setup', {}); }
+  twoFactorConfirm(code: string) { return this.http.post<{ recovery_codes: string[] }>('/api/auth/2fa/confirm', { code }); }
+  twoFactorDisable(password: string) { return this.http.post('/api/auth/2fa/disable', { password }); }
+
+  teamMembers() { return this.http.get<any[]>('/api/users'); }
+  roles() { return this.http.get<any[]>('/api/roles'); }
+  createUser(body: unknown) { return this.http.post<any>('/api/users', body); }
+  updateUser(id: number, body: unknown) { return this.http.put<any>(`/api/users/${id}`, body); }
+  resetUser2fa(id: number) { return this.http.post(`/api/users/${id}/reset-2fa`, {}); }
+  teams() { return this.http.get<any[]>('/api/teams'); }
+  saveTeam(body: { id?: number; name: string; leader_id: number | null; member_ids: number[] }) {
+    return body.id ? this.http.put<any>(`/api/teams/${body.id}`, body) : this.http.post<any>('/api/teams', body);
+  }
+  deleteTeam(id: number) { return this.http.delete(`/api/teams/${id}`); }
+
+  settings() { return this.http.get<{ organization: { name: string }; settings: any }>('/api/settings'); }
+  saveSettings(body: unknown) { return this.http.put<{ organization: { name: string }; settings: any }>('/api/settings', body); }
+  automations() { return this.http.get<{ rules: AutomationRule[]; schema: { triggers: string[]; fields: string[]; operators: string[]; actions: string[] } }>('/api/automations'); }
+  saveAutomation(r: Partial<AutomationRule>) {
+    return r.id ? this.http.put<AutomationRule>(`/api/automations/${r.id}`, r) : this.http.post<AutomationRule>('/api/automations', r);
+  }
+  deleteAutomation(id: number) { return this.http.delete(`/api/automations/${id}`); }
+
+  reports(from: string, to: string) { return this.http.get<any>('/api/reports', { params: params({ from, to }) }); }
+  billing() { return this.http.get<any>('/api/billing'); }
+  changePlan(plan: string) { return this.http.post<any>('/api/billing/plan', { plan }); }
+  adminCosts() { return this.http.get<any>('/api/admin/costs'); }
 
   companies(p: Params) { return this.http.get<Page<Company>>('/api/companies', { params: params(p) }); }
   company(id: number) { return this.http.get<Company>(`/api/companies/${id}`); }

@@ -2,37 +2,38 @@ import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Api } from '../core/api';
+import { TPipe } from '../core/i18n/i18n';
 import { AuthService } from '../core/auth';
 import { Lead, OUTCOMES, Page, PIPELINE, label, qualityClass } from '../core/models';
 
 /** Lead result table (spec §24). */
 @Component({
   selector: 'app-leads',
-  imports: [FormsModule, RouterLink],
+  imports: [TPipe, FormsModule, RouterLink],
   template: `
     <div class="mb-5 flex flex-wrap items-center gap-3">
-      <h1 class="text-2xl font-bold">Leads</h1>
-      <span class="text-sm text-slate-500">{{ page()?.total ?? 0 }} total</span>
-      @if (canExport) { <button class="btn-ghost ml-auto" (click)="export()">Export CSV</button> }
+      <h1 class="text-2xl font-bold">{{ 'Leads' | t }}</h1>
+      <span class="text-sm text-slate-500">{{ '{n} total' | t: { n: page()?.total ?? 0 } }}</span>
+      @if (canExport) { <button class="btn-ghost ms-auto" (click)="export()">{{ 'Export CSV' | t }}</button> }
     </div>
     <div class="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      <input class="input" placeholder="Company name" [(ngModel)]="f.q" (keydown.enter)="load(1)" />
+      <input class="input" [placeholder]="'Company name' | t" [(ngModel)]="f.q" (keydown.enter)="load(1)" />
       <select class="input" [(ngModel)]="f.status" (ngModelChange)="load(1)">
-        <option value="">All statuses</option>
-        @for (s of statuses; track s) { <option [value]="s">{{ label(s) }}</option> }
+        <option value="">{{ 'All statuses' | t }}</option>
+        @for (s of statuses; track s) { <option [value]="s">{{ label(s) | t }}</option> }
       </select>
       <select class="input" [(ngModel)]="f.quality" (ngModelChange)="load(1)">
-        <option value="">All quality</option>
-        @for (q of qualities; track q) { <option [value]="q">{{ q }}</option> }
+        <option value="">{{ 'All quality' | t }}</option>
+        @for (q of qualities; track q) { <option [value]="q">{{ q | t }}</option> }
       </select>
-      <input class="input" type="number" min="0" max="100" placeholder="Min score" [(ngModel)]="f.min_score" (keydown.enter)="load(1)" />
-      <button class="btn-primary justify-center" (click)="load(1)">Filter</button>
+      <input class="input" type="number" min="0" max="100" [placeholder]="'Min score' | t" [(ngModel)]="f.min_score" (keydown.enter)="load(1)" />
+      <button class="btn-primary justify-center" (click)="load(1)">{{ 'Filter' | t }}</button>
     </div>
     <div class="card overflow-x-auto p-0">
       <table class="w-full">
         <thead class="border-b border-slate-200 bg-slate-50"><tr>
-          <th class="th">Company</th><th class="th">City</th><th class="th">Industry</th><th class="th">Phone</th><th class="th">Website</th>
-          <th class="th">Score</th><th class="th">Status</th><th class="th">Agent</th>
+          <th class="th">{{ 'Company' | t }}</th><th class="th">{{ 'City' | t }}</th><th class="th">{{ 'Industry' | t }}</th><th class="th">{{ 'Phone' | t }}</th><th class="th">{{ 'Website' | t }}</th>
+          <th class="th">{{ 'Score' | t }}</th><th class="th">{{ 'Status' | t }}</th><th class="th">{{ 'Agent' | t }}</th>
         </tr></thead>
         <tbody>
           @for (l of page()?.data ?? []; track l.id) {
@@ -40,25 +41,25 @@ import { Lead, OUTCOMES, Page, PIPELINE, label, qualityClass } from '../core/mod
               <td class="td"><a [routerLink]="['/leads', l.id]" class="font-medium text-indigo-700 hover:underline">{{ l.company.name_en }}</a></td>
               <td class="td">{{ l.company.location?.name_en ?? '—' }}</td>
               <td class="td">{{ l.company.industry?.name_en ?? '—' }}</td>
-              <td class="td">{{ $any(l).phones_count ? 'Yes' : 'No' }}</td>
-              <td class="td">{{ l.company.website ? 'Yes' : 'No' }}</td>
+              <td class="td">{{ ($any(l).phones_count ? 'Yes' : 'No') | t }}</td>
+              <td class="td">{{ (l.company.website ? 'Yes' : 'No') | t }}</td>
               <td class="td">
-                @if (l.score !== null) { <span class="badge" [class]="qualityClass(l.quality)" [title]="l.quality">{{ l.score }}</span> } @else { — }
+                @if (l.score !== null) { <span class="badge" [class]="qualityClass(l.quality)" [title]="l.quality | t">{{ l.score }}</span> } @else { — }
               </td>
-              <td class="td">{{ label(l.status) }}</td>
+              <td class="td">{{ label(l.status) | t }}</td>
               <td class="td">{{ l.assignee?.name ?? '—' }}</td>
             </tr>
           } @empty {
-            <tr><td class="td text-slate-500" colspan="8">No leads match.</td></tr>
+            <tr><td class="td text-slate-500" colspan="8">{{ 'No leads match.' | t }}</td></tr>
           }
         </tbody>
       </table>
     </div>
     @if ((page()?.last_page ?? 1) > 1) {
       <div class="mt-4 flex items-center justify-end gap-2 text-sm">
-        <button class="btn-ghost" [disabled]="page()!.current_page <= 1" (click)="load(page()!.current_page - 1)">Previous</button>
-        <span>Page {{ page()!.current_page }} of {{ page()!.last_page }}</span>
-        <button class="btn-ghost" [disabled]="page()!.current_page >= page()!.last_page" (click)="load(page()!.current_page + 1)">Next</button>
+        <button class="btn-ghost" [disabled]="page()!.current_page <= 1" (click)="load(page()!.current_page - 1)">{{ 'Previous' | t }}</button>
+        <span>{{ 'Page {n} of {total}' | t: { n: page()!.current_page, total: page()!.last_page } }}</span>
+        <button class="btn-ghost" [disabled]="page()!.current_page >= page()!.last_page" (click)="load(page()!.current_page + 1)">{{ 'Next' | t }}</button>
       </div>
     }
   `,

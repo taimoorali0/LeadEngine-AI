@@ -54,6 +54,7 @@ class RunCampaign implements ShouldQueue
 
         $leadIds = [];
         $outOfCredits = false;
+        $lastError = null;
         $totalQueries = max(1, $keywords->count() * count($areas));
         try {
             foreach ($keywords as $keyword) {
@@ -93,6 +94,7 @@ class RunCampaign implements ShouldQueue
                         }
                     } catch (Throwable $e) {
                         $stats['failed_queries']++;
+                        $lastError = $e->getMessage();
                         Log::error('Campaign query failed', ['campaign' => $campaign->id, 'keyword' => $keyword, 'error' => $e->getMessage()]);
                     }
                     $progress['search'] = (int) round(100 * $stats['queries'] / $totalQueries);
@@ -127,6 +129,10 @@ class RunCampaign implements ShouldQueue
                 $stats['error'] = 'Stopped: not enough credits.';
             }
             $failed = $outOfCredits && $stats['queries'] === 0 || ($stats['queries'] > 0 && $stats['failed_queries'] === $stats['queries']);
+            if ($failed && ! $outOfCredits) {
+                // Surface why, e.g. a missing API key. Trimmed: it is shown to users.
+                $stats['error'] = 'All searches failed: '.mb_substr((string) $lastError, 0, 200);
+            }
             $campaign->update([
                 'status' => $failed ? 'failed' : 'completed',
                 'progress' => $progress,

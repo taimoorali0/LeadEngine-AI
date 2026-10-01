@@ -4,57 +4,58 @@ import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Api } from '../core/api';
+import { TPipe } from '../core/i18n/i18n';
 import { Keyword, Location } from '../core/models';
 
 /** Campaign Builder (spec §7-8): where + what + keywords + filters. */
 @Component({
   selector: 'app-campaign-builder',
-  imports: [FormsModule],
+  imports: [TPipe, FormsModule],
   template: `
-    <h1 class="mb-5 text-2xl font-bold">New campaign</h1>
+    <h1 class="mb-5 text-2xl font-bold">{{ 'New campaign' | t }}</h1>
     <form class="grid gap-5 lg:grid-cols-3" (ngSubmit)="save()">
       <div class="space-y-5 lg:col-span-2">
         <section class="card space-y-4">
-          <h2 class="font-semibold">What are you looking for?</h2>
-          <div><label class="label" for="name">Campaign name</label>
-            <input id="name" class="input" name="name" [(ngModel)]="name" required placeholder="Lahore Paper Manufacturers" /></div>
+          <h2 class="font-semibold">{{ 'What are you looking for?' | t }}</h2>
+          <div><label class="label" for="name">{{ 'Campaign name' | t }}</label>
+            <input id="name" class="input" name="name" [(ngModel)]="name" required [placeholder]="'Lahore Paper Manufacturers' | t" /></div>
           <div class="grid gap-4 sm:grid-cols-2">
-            <div><label class="label" for="type">Company type</label>
-              <input id="type" class="input" name="type" [(ngModel)]="companyType" required placeholder="Paper Manufacturer" (blur)="suggest()" /></div>
-            <div><label class="label" for="industry">Industry</label>
+            <div><label class="label" for="type">{{ 'Company type' | t }}</label>
+              <input id="type" class="input" name="type" [(ngModel)]="companyType" required [placeholder]="'Paper Manufacturer' | t" (blur)="suggest()" /></div>
+            <div><label class="label" for="industry">{{ 'Industry' | t }}</label>
               <select id="industry" class="input" name="industry" [(ngModel)]="industryId">
-                <option [ngValue]="null">— Any —</option>
+                <option [ngValue]="null">{{ '— Any —' | t }}</option>
                 @for (i of industries(); track i.id) { <option [ngValue]="i.id">{{ i.name_en }}</option> }
               </select></div>
           </div>
         </section>
 
         <section class="card space-y-4">
-          <h2 class="font-semibold">Where?</h2>
+          <h2 class="font-semibold">{{ 'Where?' | t }}</h2>
           <div class="grid gap-4 sm:grid-cols-3">
-            <div><label class="label" for="country">Country</label>
+            <div><label class="label" for="country">{{ 'Country' | t }}</label>
               <select id="country" class="input" name="country" [(ngModel)]="countryId" (ngModelChange)="pickCountry($event)" required>
-                <option [ngValue]="null" disabled>Select…</option>
+                <option [ngValue]="null" disabled>{{ 'Select…' | t }}</option>
                 @for (c of countries(); track c.id) { <option [ngValue]="c.id">{{ c.name_en }}</option> }
               </select></div>
             @if (regions().length) {
-              <div><label class="label" for="region">Province / City</label>
+              <div><label class="label" for="region">{{ 'Province / City' | t }}</label>
                 <select id="region" class="input" name="region" [(ngModel)]="regionId" (ngModelChange)="pickRegion($event)">
-                  <option [ngValue]="null">All</option>
+                  <option [ngValue]="null">{{ 'All' | t }}</option>
                   @for (r of regions(); track r.id) { <option [ngValue]="r.id">{{ r.name_en }}</option> }
                 </select></div>
             }
             @if (cities().length) {
-              <div><label class="label" for="city">City</label>
+              <div><label class="label" for="city">{{ 'City' | t }}</label>
                 <select id="city" class="input" name="city" [(ngModel)]="cityId" (ngModelChange)="pickCity($event)">
-                  <option [ngValue]="null">All</option>
+                  <option [ngValue]="null">{{ 'All' | t }}</option>
                   @for (r of cities(); track r.id) { <option [ngValue]="r.id">{{ r.name_en }}</option> }
                 </select></div>
             }
           </div>
           @if (areas().length) {
             <div>
-              <span class="label">Areas <span class="normal-case font-normal">(none selected = whole city)</span></span>
+              <span class="label">{{ 'Areas' | t }} <span class="normal-case font-normal">{{ '(none selected = whole city)' | t }}</span></span>
               <div class="flex flex-wrap gap-2">
                 @for (a of areas(); track a.id) {
                   <button type="button" class="badge border px-3 py-1" (click)="toggleArea(a.id)"
@@ -67,10 +68,10 @@ import { Keyword, Location } from '../core/models';
 
         <section class="card space-y-3">
           <div class="flex items-center justify-between">
-            <h2 class="font-semibold">Search keywords</h2>
+            <h2 class="font-semibold">{{ 'Search keywords' | t }}</h2>
             <div class="flex items-center gap-3">
-              <label class="flex items-center gap-1 text-sm"><input type="checkbox" name="ar" [(ngModel)]="arabic" (change)="suggest()" /> Arabic</label>
-              <button type="button" class="btn-ghost" (click)="suggest()" [disabled]="!companyType">Generate</button>
+              <label class="flex items-center gap-1 text-sm"><input type="checkbox" name="ar" [(ngModel)]="arabic" (change)="suggest()" /> {{ 'Arabic' | t }}</label>
+              <button type="button" class="btn-ghost" (click)="suggest()" [disabled]="!companyType">{{ 'Generate' | t }}</button>
             </div>
           </div>
           <div class="flex flex-wrap gap-2">
@@ -79,28 +80,33 @@ import { Keyword, Location } from '../core/models';
                 <button type="button" (click)="toggleKeyword(k)" [attr.aria-label]="'Toggle ' + k.keyword">{{ k.keyword }}</button>
                 <button type="button" class="text-slate-400 hover:text-red-600" (click)="removeKeyword(k)" aria-label="Remove">×</button>
               </span>
-            } @empty { <p class="text-sm text-slate-500">Enter a company type and click Generate.</p> }
+            } @empty { <p class="text-sm text-slate-500">{{ 'Enter a company type and click Generate.' | t }}</p> }
           </div>
           <div class="flex gap-2">
-            <input class="input" name="custom" [(ngModel)]="custom" placeholder="Add custom keyword" (keydown.enter)="$event.preventDefault(); addKeyword()" />
-            <button type="button" class="btn-ghost" (click)="addKeyword()">Add</button>
+            <input class="input" name="custom" [(ngModel)]="custom" [placeholder]="'Add custom keyword' | t" (keydown.enter)="$event.preventDefault(); addKeyword()" />
+            <button type="button" class="btn-ghost" (click)="addKeyword()">{{ 'Add' | t }}</button>
           </div>
         </section>
       </div>
 
       <aside class="space-y-5">
         <section class="card space-y-4">
-          <h2 class="font-semibold">Filters</h2>
-          <div><label class="label" for="target">Target results</label><input id="target" class="input" type="number" min="1" max="5000" name="target" [(ngModel)]="target" /></div>
-          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="mhp" [(ngModel)]="mustHavePhone" /> Must have phone</label>
-          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="mhw" [(ngModel)]="mustHaveWebsite" /> Must have website</label>
-          <div><label class="label" for="rating">Minimum rating</label><input id="rating" class="input" type="number" step="0.1" min="0" max="5" name="rating" [(ngModel)]="minRating" /></div>
-          <div><label class="label" for="reviews">Minimum reviews</label><input id="reviews" class="input" type="number" min="0" name="reviews" [(ngModel)]="minReviews" /></div>
+          <h2 class="font-semibold">{{ 'Filters' | t }}</h2>
+          <div><label class="label" for="target">{{ 'Target results' | t }}</label><input id="target" class="input" type="number" min="1" max="5000" name="target" [(ngModel)]="target" /></div>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="mhp" [(ngModel)]="mustHavePhone" /> {{ 'Must have phone' | t }}</label>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="mhw" [(ngModel)]="mustHaveWebsite" /> {{ 'Must have website' | t }}</label>
+          <div><label class="label" for="rating">{{ 'Minimum rating' | t }}</label><input id="rating" class="input" type="number" step="0.1" min="0" max="5" name="rating" [(ngModel)]="minRating" /></div>
+          <div><label class="label" for="refresh">{{ 'Auto-refresh' | t }}</label>
+            <select id="refresh" class="input" name="refresh" [(ngModel)]="refreshDays">
+              <option [ngValue]="null">{{ 'Off' | t }}</option>
+              @for (d of [7, 14, 30, 90]; track d) { <option [ngValue]="d">{{ 'Every {n} days' | t: { n: d } }}</option> }
+            </select></div>
+          <div><label class="label" for="reviews">{{ 'Minimum reviews' | t }}</label><input id="reviews" class="input" type="number" min="0" name="reviews" [(ngModel)]="minReviews" /></div>
         </section>
-        @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
+        @if (error()) { <p class="text-sm text-red-600">{{ error() | t }}</p> }
         <div class="flex gap-2">
-          <button class="btn-ghost flex-1 justify-center" type="submit" [disabled]="busy()">Save draft</button>
-          <button class="btn-primary flex-1 justify-center" type="button" (click)="save(true)" [disabled]="busy()">Save & run</button>
+          <button class="btn-ghost flex-1 justify-center" type="submit" [disabled]="busy()">{{ 'Save draft' | t }}</button>
+          <button class="btn-primary flex-1 justify-center" type="button" (click)="save(true)" [disabled]="busy()">{{ 'Save & run' | t }}</button>
         </div>
       </aside>
     </form>
@@ -133,6 +139,7 @@ export class CampaignBuilderPage {
   mustHaveWebsite = false;
   minRating: number | null = null;
   minReviews: number | null = null;
+  refreshDays: number | null = null;
 
   pickCountry(id: number) {
     this.regionId = this.cityId = null;
@@ -198,6 +205,7 @@ export class CampaignBuilderPage {
       country_id: this.countryId,
       location_ids: locationIds,
       target_results: this.target,
+      refresh_interval_days: this.refreshDays,
       filters: {
         must_have_phone: this.mustHavePhone, must_have_website: this.mustHaveWebsite,
         min_rating: this.minRating, min_reviews: this.minReviews, languages: this.arabic ? ['en', 'ar'] : ['en'],

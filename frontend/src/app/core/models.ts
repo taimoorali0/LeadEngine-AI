@@ -3,8 +3,10 @@ export interface User {
   name: string;
   email: string;
   role: { key: string; name: string };
-  organization: { id: number; name: string } | null;
+  organization: { id: number; name: string; plan: string; credit_balance: number } | null;
   permissions: string[];
+  locale: 'en' | 'ur' | 'ar';
+  two_factor_enabled: boolean;
 }
 
 export interface Location { id: number; parent_id: number | null; level: string; iso_code: string | null; name_en: string; name_ar?: string; parent?: Location | null }
@@ -28,6 +30,8 @@ export interface Campaign {
   runs?: { id: number; started_at: string; finished_at: string | null; new_companies: number }[];
   leads_count?: number;
   last_run_at: string | null;
+  refresh_interval_days: number | null;
+  next_refresh_at: string | null;
   created_at: string;
 }
 
@@ -47,6 +51,11 @@ export interface Company {
   social_links: Record<string, string>;
   possible_needs: string[];
   enrichment_status: string;
+  ai_summary: string | null;
+  ai_analyzed_at: string | null;
+  classification_confidence: string | null;
+  products: string[];
+  services: string[];
   industry?: Industry | null;
   location?: Location | null;
   phones?: Phone[];
@@ -87,4 +96,25 @@ export function qualityClass(q: string | null): string {
     case 'Needs Review': return 'bg-amber-100 text-amber-800';
     default: return 'bg-slate-100 text-slate-600';
   }
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  data: { kind: string; title: string; body: string | null; url: string | null; meta: Record<string, unknown> };
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface RuleCondition { field: string; op: string; value?: unknown }
+export interface RuleAction { type: string; params: Record<string, unknown> }
+export interface AutomationRule {
+  id?: number;
+  name: string;
+  trigger: string;
+  conditions: RuleCondition[];
+  actions: RuleAction[];
+  enabled: boolean;
+  priority: number;
+  runs?: number;
 }

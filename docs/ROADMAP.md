@@ -33,17 +33,17 @@ Angular PWA (app.leadengine)  →  Laravel API (api.leadengine)  →  Redis queu
 ## Phases
 
 1. **Foundation**: auth, roles, users, companies, industries, locations, campaigns, basic leads *(done)*
-2. **Google discovery**: Places connector, area-based search, keyword generator, progress (polling), dedup *(done; auto-generated geo grid and live WebSockets/Reverb pending)*
-3. **Python enrichment**: crawler *(basic multi-page version done)*, phone/email/social extraction *(done)*, AI summary and classification
-4. **CRM**: statuses, Kanban, assignments, notes, follow-ups, activities *(done)*; notifications pending
-5. **Intelligence**: AI summaries, opportunity classification, campaign analytics
-6. **Automation**: rules engine, auto-assignment, scheduled refresh, new-business alerts
-7. **SaaS**: plans, billing, credits, onboarding
+2. **Google discovery**: Places connector, area-based search, keyword generator, live progress, dedup *(done; auto-generated geo grid pending)*
+3. **Python enrichment**: crawler, phone/email/social extraction, AI summary and classification *(done)*
+4. **CRM**: statuses, Kanban, assignments, notes, follow-ups, activities, notifications *(done)*
+5. **Intelligence**: lead scoring, AI summaries, opportunity hints, call-prep brief, reports *(done)*
+6. **Automation**: rules engine, auto-assignment (round robin / weighted / territory), scheduled refresh, new-business alerts *(done)*
+7. **SaaS**: organizations, plans, credits, usage limits, cost dashboard *(done; payment provider pending)*
 
 ## Not yet built
 
-- Two-factor auth, user/team management screens, settings UI
-- Notifications, Reverb live updates (campaign page polls every 3 s for now)
-- AI features (summaries, classification, opportunity detection, natural-language campaigns)
-- Translations (EN/UR/AR UI): the data model is already bilingual
-- Auto-assignment rules, automation, scheduled refresh, billing/credits UI, reports
+- Payment provider (Stripe or a local gateway): plan changes currently apply immediately and are invoiced manually
+- Auto-generated geographic search grid (areas are chosen from the location tree today)
+- Natural-language campaign creation (spec §9) and email verification
+- Notification titles are stored in English; UI chrome is translated (EN/UR/AR)
+- Public integration API keys (spec §63), Excel/PDF export

@@ -16,6 +16,9 @@ services:
   python-engine:
     build: ./python-engine
     ports: ["8001:8001"]
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     depends_on: [redis]
 volumes:
   pgdata:

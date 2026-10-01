@@ -2,46 +2,47 @@ import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DecimalPipe } from '@angular/common';
 import { Api } from '../core/api';
+import { TPipe } from '../core/i18n/i18n';
 import { PIPELINE, label } from '../core/models';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DecimalPipe],
+  imports: [TPipe, DecimalPipe],
   template: `
-    <h1 class="mb-5 text-2xl font-bold">Dashboard</h1>
+    <h1 class="mb-5 text-2xl font-bold">{{ 'Dashboard' | t }}</h1>
     @if (stats(); as s) {
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         @for (t of tiles; track t.key) {
           <div class="card">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t.label }}</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t.label | t }}</div>
             <div class="mt-2 text-3xl font-bold tabular-nums">{{ s[t.key] | number }}</div>
           </div>
         }
       </div>
       <div class="mt-6 grid gap-4 lg:grid-cols-2">
         <div class="card">
-          <h2 class="mb-4 font-semibold">Pipeline</h2>
+          <h2 class="mb-4 font-semibold">{{ 'Pipeline' | t }}</h2>
           @for (st of pipeline; track st) {
             <div class="mb-2 flex items-center gap-3 text-sm">
-              <span class="w-24 shrink-0 text-slate-600">{{ label(st) }}</span>
+              <span class="w-24 shrink-0 text-slate-600">{{ label(st) | t }}</span>
               <div class="h-2.5 flex-1 rounded-full bg-slate-100">
                 <div class="h-2.5 rounded-full bg-indigo-500" [style.width.%]="pct(s['by_status']?.[st], s)"></div>
               </div>
-              <span class="w-12 text-right tabular-nums">{{ s['by_status']?.[st] ?? 0 }}</span>
+              <span class="w-12 text-end tabular-nums">{{ s['by_status']?.[st] ?? 0 }}</span>
             </div>
           }
         </div>
         <div class="card">
-          <h2 class="mb-4 font-semibold">Lead quality</h2>
+          <h2 class="mb-4 font-semibold">{{ 'Lead quality' | t }}</h2>
           @for (q of qualities; track q) {
             <div class="flex justify-between border-b border-slate-100 py-2 text-sm last:border-0">
-              <span>{{ q }}</span><b class="tabular-nums">{{ s['by_quality']?.[q] ?? 0 }}</b>
+              <span>{{ q | t }}</span><b class="tabular-nums">{{ s['by_quality']?.[q] ?? 0 }}</b>
             </div>
           }
         </div>
       </div>
     } @else {
-      <p class="text-slate-500">Loading…</p>
+      <p class="text-slate-500">{{ 'Loading…' | t }}</p>
     }
   `,
 })

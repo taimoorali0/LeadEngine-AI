@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\EnrichCompany;
+use App\Jobs\RunCampaign;
 use App\Models\AutomationRule;
 use App\Models\Campaign;
 use App\Models\Company;
@@ -254,5 +255,22 @@ class PlatformTest extends TestCase
         $this->assertSame(['info@abc.pk'], $c->emails()->pluck('email')->all());
         $this->assertSame($before - 3, $owner->organization->fresh()->credit_balance, '1 enrichment + 2 AI credits');
         Http::assertSent(fn ($r) => str_ends_with($r->url(), '/ai/analyze') && $r['text'] === 'We are a tissue mill.');
+    }
+
+    public function test_campaign_failing_every_search_explains_why(): void
+    {
+        config(['services.google_places.key' => null]);
+        Notification::fake();
+        $owner = $this->makeUser('owner');
+        $c = Campaign::create(['organization_id' => $owner->organization_id, 'name' => 'x', 'company_type' => 'x',
+            'country_id' => Location::where('iso_code', 'PK')->value('id'), 'created_by' => $owner->id]);
+        $c->keywords()->create(['keyword' => 'x']);
+
+        RunCampaign::dispatchSync($c);
+
+        $c->refresh();
+        $this->assertSame('failed', $c->status);
+        $this->assertStringContainsString('GOOGLE_PLACES_API_KEY is not configured', $c->stats['error']);
+        Notification::assertSentTo($owner, AppNotification::class, fn ($n) => $n->kind === 'campaign_failed');
     }
 }

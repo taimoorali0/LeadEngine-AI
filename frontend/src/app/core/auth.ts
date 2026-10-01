@@ -16,10 +16,24 @@ export class AuthService {
     try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
   }
 
-  async login(email: string, password: string): Promise<void> {
-    const res = await firstValueFrom(this.http.post<{ token: string; user: User }>('/api/auth/login', { email, password }));
-    localStorage.setItem(TOKEN_KEY, res.token);
-    this.user.set(res.user);
+  /** Returns a 2FA challenge string when a second step is required. */
+  async login(email: string, password: string): Promise<string | null> {
+    const res = await firstValueFrom(this.http.post<{ token?: string; user?: User; two_factor_required?: boolean; challenge?: string }>(
+      '/api/auth/login', { email, password }));
+    if (res.two_factor_required) return res.challenge!;
+    this.finish(res.token!, res.user!);
+    return null;
+  }
+
+  async verifyTwoFactor(challenge: string, code: string, recovery: boolean): Promise<void> {
+    const res = await firstValueFrom(this.http.post<{ token: string; user: User }>('/api/auth/2fa/challenge',
+      recovery ? { challenge, recovery_code: code } : { challenge, code }));
+    this.finish(res.token, res.user);
+  }
+
+  private finish(token: string, user: User) {
+    try { localStorage.setItem(TOKEN_KEY, token); } catch { /* storage unavailable */ }
+    this.user.set(user);
   }
 
   /** Restores the session from a stored token; false if there is none or it expired. */

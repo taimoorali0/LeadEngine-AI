@@ -11,6 +11,7 @@ use App\Services\Billing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class BillingController extends Controller
@@ -64,7 +65,7 @@ class BillingController extends Controller
             return response()->json(['message' => 'Enter the number of credits requested.'], 422);
         }
 
-        $proof = $request->file('payment_proof')?->store('billing-proofs', 'public');
+        $proof = $request->file('payment_proof')?->store('billing-proofs', 'local');
 
         $billingRequest = BillingRequest::create([
             ...collect($data)->except('payment_proof')->all(),
@@ -96,6 +97,14 @@ class BillingController extends Controller
         }
 
         return response()->json($query->paginate(50));
+    }
+
+    public function proof(Request $request, BillingRequest $billingRequest)
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($billingRequest->payment_proof_path && Storage::disk('local')->exists($billingRequest->payment_proof_path), 404);
+
+        return Storage::disk('local')->download($billingRequest->payment_proof_path);
     }
 
     /** Super admin review + entitlement activation. */

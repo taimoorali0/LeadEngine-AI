@@ -54,12 +54,14 @@ Artisan::command('platform:create-admin {email?}', function (?string $email = nu
     $password = $this->secret('Password (minimum 10 characters)');
     if (! $email || ! $password || mb_strlen($password) < 10) {
         $this->error('A valid email and password of at least 10 characters are required.');
+
         return 1;
     }
 
     $roleId = Role::where('key', 'super_admin')->value('id');
     if (! $roleId) {
         $this->error('Super Admin role is missing. Run migrations/seed first.');
+
         return 1;
     }
 
@@ -68,6 +70,7 @@ Artisan::command('platform:create-admin {email?}', function (?string $email = nu
         ['organization_id' => null, 'role_id' => $roleId, 'name' => $name, 'password' => $password, 'is_active' => true]
     );
     $this->info("Super Admin ready: {$user->email}");
+
     return 0;
 })->purpose('Create or reset the platform Super Admin account');
 

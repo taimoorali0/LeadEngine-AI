@@ -22,10 +22,10 @@ class PlatformController extends Controller
             $q->where(fn ($x) => $x->where('name', 'ilike', "%{$term}%")->orWhere('slug', 'ilike', "%{$term}%"));
         }
         if ($request->filled('status')) {
-            $q->where('subscription_status', $request->string('status'));
+            $q->where('subscription_status', $request->string('status')->toString());
         }
         if ($request->filled('plan')) {
-            $q->where('plan', $request->string('plan'));
+            $q->where('plan', $request->string('plan')->toString());
         }
 
         return response()->json($q->paginate(50));

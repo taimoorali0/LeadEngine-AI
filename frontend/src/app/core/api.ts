@@ -19,6 +19,7 @@ export class Api {
 
   locations(parentId?: number) { return this.http.get<Location[]>('/api/locations', { params: params({ parent_id: parentId }) }); }
   industries() { return this.http.get<Industry[]>('/api/industries'); }
+  taxonomy(sectorId?: number) { return this.http.get<any>('/api/taxonomy', { params: params({ sector_id: sectorId }) }); }
   users() { return this.http.get<{ id: number; name: string }[]>('/api/users'); }
 
   campaigns() { return this.http.get<Page<Campaign>>('/api/campaigns'); }
@@ -27,6 +28,7 @@ export class Api {
   updateCampaign(id: number, body: unknown) { return this.http.put<Campaign>(`/api/campaigns/${id}`, body); }
   runCampaign(id: number) { return this.http.post<Campaign>(`/api/campaigns/${id}/run`, {}); }
   suggestKeywords(company_type: string, languages: string[]) { return this.http.post<string[]>('/api/keywords/suggest', { company_type, languages }); }
+  previewCampaign(body: unknown) { return this.http.post<any>('/api/campaigns/preview', body); }
 
   leads(p: Params) { return this.http.get<Page<Lead>>('/api/leads', { params: params(p) }); }
   board() { return this.http.get<Partial<Record<string, Lead[]>>>('/api/leads/board'); }

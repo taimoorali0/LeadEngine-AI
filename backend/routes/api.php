@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('billing/requests', [BillingController::class, 'submitRequest']);
     Route::get('admin/billing/requests', [BillingController::class, 'requests']);
     Route::patch('admin/billing/requests/{billingRequest}', [BillingController::class, 'review']);
+    Route::get('admin/billing/requests/{billingRequest}/proof', [BillingController::class, 'proof']);
     Route::post('admin/billing/plan', [BillingController::class, 'changePlan']);
     Route::post('admin/organizations/{organization}/credits', [BillingController::class, 'grant']);
     Route::get('admin/costs', [BillingController::class, 'costs']);

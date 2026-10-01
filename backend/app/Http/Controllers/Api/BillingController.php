@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\BillingRequest;
 use App\Models\Lead;
 use App\Models\Organization;
 use App\Services\Billing;
@@ -30,24 +31,136 @@ class BillingController extends Controller
             'usage_this_month' => DB::table('usage_events')->where('organization_id', $org->id)->where('created_at', '>=', $since)
                 ->selectRaw('kind, sum(credits) as credits, count(*) as units')->groupBy('kind')->get(),
             'transactions' => DB::table('credit_transactions')->where('organization_id', $org->id)->latest('id')->limit(30)->get(),
+            'requests' => BillingRequest::where('organization_id', $org->id)->latest()->limit(20)->get(),
         ]);
     }
 
-    /** Plan change. Without a payment provider this applies immediately. */
+    /**
+     * Customer billing is request-based. Users cannot activate or switch plans directly.
+     * They submit proof/reference and a platform super admin reviews it.
+     */
+    public function submitRequest(Request $request): JsonResponse
+    {
+        $org = $request->user()->organization;
+        abort_unless($org, 422, 'Organization account required.');
+
+        $data = $request->validate([
+            'type' => ['required', Rule::in(['upgrade', 'renewal', 'reactivation', 'credits'])],
+            'requested_plan' => ['nullable', Rule::in(array_keys(config('plans.plans')))],
+            'requested_credits' => 'nullable|integer|min:1|max:10000000',
+            'amount' => 'nullable|numeric|min:0|max:999999999',
+            'currency' => 'nullable|string|size:3',
+            'payment_method' => 'nullable|string|max:80',
+            'transaction_reference' => 'nullable|string|max:160',
+            'payment_date' => 'nullable|date',
+            'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:8192',
+            'message' => 'nullable|string|max:2000',
+        ]);
+
+        if ($data['type'] === 'upgrade' && empty($data['requested_plan'])) {
+            return response()->json(['message' => 'Choose the requested plan.'], 422);
+        }
+        if ($data['type'] === 'credits' && empty($data['requested_credits'])) {
+            return response()->json(['message' => 'Enter the number of credits requested.'], 422);
+        }
+
+        $proof = $request->file('payment_proof')?->store('billing-proofs', 'public');
+
+        $billingRequest = BillingRequest::create([
+            ...collect($data)->except('payment_proof')->all(),
+            'organization_id' => $org->id,
+            'requested_by' => $request->user()->id,
+            'currency' => strtoupper($data['currency'] ?? 'PKR'),
+            'payment_proof_path' => $proof,
+            'status' => 'pending',
+        ]);
+
+        AuditLog::record('billing.request_submitted', $billingRequest, [
+            'organization_id' => $org->id,
+            'type' => $billingRequest->type,
+        ]);
+
+        return response()->json($billingRequest, 201);
+    }
+
+    /** Super admin queue. */
+    public function requests(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+
+        $query = BillingRequest::with(['organization:id,name,plan,credit_balance', 'requester:id,name,email', 'reviewer:id,name'])
+            ->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        return response()->json($query->paginate(50));
+    }
+
+    /** Super admin review + entitlement activation. */
+    public function review(Request $request, BillingRequest $billingRequest, Billing $billing): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_if(in_array($billingRequest->status, ['approved', 'rejected'], true), 409, 'Request already finalized.');
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['approved', 'rejected', 'needs_info'])],
+            'admin_note' => 'nullable|string|max:2000',
+        ]);
+
+        DB::transaction(function () use ($billingRequest, $billing, $request, $data) {
+            $org = Organization::lockForUpdate()->findOrFail($billingRequest->organization_id);
+
+            if ($data['status'] === 'approved') {
+                if ($billingRequest->type === 'upgrade' && $billingRequest->requested_plan) {
+                    $org->update(['plan' => $billingRequest->requested_plan]);
+                    $billing->renew($org);
+                } elseif (in_array($billingRequest->type, ['renewal', 'reactivation'], true)) {
+                    $billing->renew($org);
+                } elseif ($billingRequest->type === 'credits' && $billingRequest->requested_credits) {
+                    $billing->grant($org, $billingRequest->requested_credits, 'approved_credit_request', $request->user());
+                }
+            }
+
+            $billingRequest->update([
+                'status' => $data['status'],
+                'admin_note' => $data['admin_note'] ?? null,
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ]);
+        });
+
+        AuditLog::record('billing.request_reviewed', $billingRequest, [
+            'status' => $data['status'],
+            'admin_note' => $data['admin_note'] ?? null,
+        ]);
+
+        return response()->json($billingRequest->fresh(['organization', 'requester', 'reviewer']));
+    }
+
+    /**
+     * Legacy direct plan switch is restricted to the platform super admin.
+     * Customer-facing UI must use submitRequest().
+     */
     public function changePlan(Request $request, Billing $billing): JsonResponse
     {
-        $this->authorize('billing.manage');
-        $data = $request->validate(['plan' => ['required', Rule::in(array_keys(config('plans.plans')))]]);
-        $org = $request->user()->organization;
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        $data = $request->validate([
+            'organization_id' => 'required|integer|exists:organizations,id',
+            'plan' => ['required', Rule::in(array_keys(config('plans.plans')))],
+        ]);
+
+        $org = Organization::findOrFail($data['organization_id']);
         $from = $org->plan;
         $org->update(['plan' => $data['plan']]);
         $billing->renew($org);
         AuditLog::record('billing.plan_changed', $org, ['from' => $from, 'to' => $data['plan']]);
 
-        return $this->show($request, $billing);
+        return response()->json(['organization' => $org->fresh(), 'plan' => $billing->plan($org)]);
     }
 
-    /** Super admin: add credits to any organization (e.g. after an invoice is paid). */
+    /** Super admin: add credits to any organization. */
     public function grant(Request $request, Organization $organization, Billing $billing): JsonResponse
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
@@ -58,7 +171,7 @@ class BillingController extends Controller
         return response()->json(['credit_balance' => $organization->credit_balance]);
     }
 
-    /** Super admin cost dashboard (spec §67). */
+    /** Super admin cost dashboard. */
     public function costs(Request $request): JsonResponse
     {
         abort_unless($request->user()->isSuperAdmin(), 403);

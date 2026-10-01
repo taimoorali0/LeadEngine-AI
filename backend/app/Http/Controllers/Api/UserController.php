@@ -33,6 +33,7 @@ class UserController extends Controller
     {
         $this->authorize('users.manage');
         $org = $request->user()->organization;
+        $billing->assertOperational($org);
         abort_if(! $billing->canAddUser($org), 422, 'Your plan’s user limit has been reached.');
         $data = $this->validated($request);
         $user = User::create($data + ['organization_id' => $org->id]);

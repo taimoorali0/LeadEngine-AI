@@ -41,6 +41,14 @@ if ! node_ok; then
   hash -r
 fi
 
+# A different web server on port 80 (e.g. Apache) would stop nginx from starting.
+OWNER80=$(ss -ltnpH 'sport = :80' 2>/dev/null | grep -o 'users:(("[^"]*' | head -1 | cut -d'"' -f2 || true)
+if [ -n "$OWNER80" ] && [ "$OWNER80" != nginx ]; then
+  echo "Port 80 is used by '$OWNER80'. LeadEngine needs nginx on port 80."
+  echo "Either stop $OWNER80, or put LeadEngine behind it as a reverse proxy (see docs/INSTALL.md)."
+  exit 1
+fi
+
 # ---------------------------------------------------------------- services we depend on
 HAS_SYSTEMD=0; [ -d /run/systemd/system ] && HAS_SYSTEMD=1
 start_base() {
@@ -79,6 +87,18 @@ su postgres -c "psql -tAc \"SELECT 1 FROM pg_database WHERE datname='leadengine'
 # The schema uses these extensions; creating them needs superuser rights.
 su postgres -c "psql -q -d leadengine -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS citext;'"
 
+# ---------------------------------------------------------------- internal ports
+# Reuse the ports from a previous install; otherwise pick free ones so other apps keep theirs.
+port_free() { ! ss -ltnH "sport = :$1" 2>/dev/null | grep -q .; }
+pick_port() { local p=$1; while ! port_free "$p"; do p=$((p + 1)); done; echo "$p"; }
+if [ -f "$ENV_FILE" ] && grep -q '^PYTHON_ENGINE_URL=http://127.0.0.1:' "$ENV_FILE"; then
+  ENGINE_PORT=$(grep '^PYTHON_ENGINE_URL=' "$ENV_FILE" | sed 's|.*:||')
+  REVERB_PORT=$(grep '^REVERB_PORT=' "$ENV_FILE" | cut -d= -f2)
+else
+  ENGINE_PORT=$(pick_port 18001)
+  REVERB_PORT=$(pick_port 18080)
+fi
+
 # ---------------------------------------------------------------- backend
 log "Configuring Laravel"
 cd "$APP_DIR/backend"
@@ -89,7 +109,8 @@ if [ ! -f "$ENV_FILE" ]; then
   set_env APP_ENV production; set_env APP_DEBUG false; set_env APP_URL "$URL"
   set_env DB_PASSWORD "$DB_PASSWORD"; set_env QUEUE_CONNECTION redis; set_env CACHE_STORE redis
   set_env SESSION_DRIVER redis; set_env BROADCAST_CONNECTION reverb; set_env LOG_LEVEL warning
-  set_env REVERB_APP_SECRET "$(openssl rand -hex 24)"; set_env REVERB_HOST 127.0.0.1; set_env REVERB_PORT 8080
+  set_env REVERB_APP_SECRET "$(openssl rand -hex 24)"; set_env REVERB_HOST 127.0.0.1; set_env REVERB_PORT "$REVERB_PORT"
+  set_env PYTHON_ENGINE_URL "http://127.0.0.1:$ENGINE_PORT"
   set_env GOOGLE_PLACES_API_KEY "${GOOGLE_PLACES_API_KEY:-}"
 fi
 # Downloads only (never an interactive git/ssh fallback), with one retry for flaky networks.
@@ -139,7 +160,7 @@ server {
         fastcgi_read_timeout 120s;
     }
     location /app/ {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:$REVERB_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection \$connection_upgrade;
@@ -150,7 +171,14 @@ server {
 }
 NGINX
 ln -sf /etc/nginx/sites-available/leadengine /etc/nginx/sites-enabled/leadengine
-rm -f /etc/nginx/sites-enabled/default
+# Never touch other sites. The stock "Welcome to nginx" default is only disabled on an
+# otherwise empty server installed without a domain (it would shadow LeadEngine on the IP).
+OTHER_SITES=$(ls /etc/nginx/sites-enabled | grep -vxE 'default|leadengine' | wc -l)
+if [ "$DOMAIN" = _ ] && [ "$OTHER_SITES" = 0 ] && [ -e /etc/nginx/sites-enabled/default ] \
+   && grep -q 'root /var/www/html' /etc/nginx/sites-available/default; then
+  echo "Disabling nginx's stock default site (restore: ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/)"
+  rm -f /etc/nginx/sites-enabled/default
+fi
 nginx -t -q
 if [ $HAS_SYSTEMD = 1 ]; then systemctl reload nginx; else start_base; service nginx reload >/dev/null; fi
 
@@ -175,9 +203,9 @@ WantedBy=multi-user.target
 UNIT
 }
 PHP=/usr/bin/php
-unit engine "Python data engine" www-data "$APP_DIR/python-engine" "$APP_DIR/python-engine/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001 --workers 2" $ENGINE_ENV
+unit engine "Python data engine" www-data "$APP_DIR/python-engine" "$APP_DIR/python-engine/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port $ENGINE_PORT --workers 2" $ENGINE_ENV
 unit worker "queue worker" www-data "$APP_DIR/backend" "$PHP artisan queue:work --tries=3 --timeout=3600"
-unit reverb "WebSockets (Reverb)" www-data "$APP_DIR/backend" "$PHP artisan reverb:start --host=127.0.0.1 --port=8080"
+unit reverb "WebSockets (Reverb)" www-data "$APP_DIR/backend" "$PHP artisan reverb:start --host=127.0.0.1 --port=$REVERB_PORT"
 unit scheduler "scheduler" www-data "$APP_DIR/backend" "$PHP artisan schedule:work"
 
 SERVICES="engine worker reverb scheduler"
@@ -190,8 +218,8 @@ else
   start_base
   pkill -f "uvicorn app.main:app" || true; pkill -f "artisan (queue:work|reverb:start|schedule:work)" || true
   set -a; . $ENGINE_ENV; set +a
-  (cd "$APP_DIR/python-engine" && nohup su -s /bin/sh www-data -c ".venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001" >/var/log/leadengine-engine.log 2>&1 &)
-  for c in "queue:work --tries=3 --timeout=3600" "reverb:start --host=127.0.0.1 --port=8080" "schedule:work"; do
+  (cd "$APP_DIR/python-engine" && nohup su -s /bin/sh www-data -c ".venv/bin/uvicorn app.main:app --host 127.0.0.1 --port $ENGINE_PORT" >/var/log/leadengine-engine.log 2>&1 &)
+  for c in "queue:work --tries=3 --timeout=3600" "reverb:start --host=127.0.0.1 --port=$REVERB_PORT" "schedule:work"; do
     (cd "$APP_DIR/backend" && nohup su -s /bin/sh www-data -c "$PHP artisan $c" >>/var/log/leadengine.log 2>&1 &)
   done
 fi

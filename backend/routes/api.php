@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('admin/costs', [BillingController::class, 'costs']);
 
     Route::post('keywords/suggest', [CampaignController::class, 'suggestKeywords']);
+    Route::post('campaigns/preview', [CampaignController::class, 'preview']);
     Route::post('campaigns/{campaign}/run', [CampaignController::class, 'run']);
     Route::apiResource('campaigns', CampaignController::class);
 

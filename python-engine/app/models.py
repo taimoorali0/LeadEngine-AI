@@ -91,3 +91,32 @@ class WebsiteExtraction(BaseModel):
     social_links: dict[str, str]
     title: str | None = None
     description: str | None = None
+    text: str = ""  # visible page text, trimmed; input for AI analysis
+
+
+class IndustryOption(BaseModel):
+    slug: str
+    name: str
+    aliases: list[str] = []
+    parent_slug: str | None = None
+
+
+class AnalyzeRequest(BaseModel):
+    name: str
+    text: str = ""
+    description: str | None = None
+    category: str | None = None
+    industries: list[IndustryOption] = []
+    offerings: list[str] = []  # what the user's company sells, to judge relevance
+    language: Literal["en", "ar", "ur"] = "en"
+
+
+class Analysis(BaseModel):
+    summary: str | None
+    industry_slug: str | None
+    sub_industry_slug: str | None
+    confidence: float  # 0-100
+    possible_needs: list[str]
+    products: list[str]
+    services: list[str]
+    provider: str

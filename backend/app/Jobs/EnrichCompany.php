@@ -4,8 +4,10 @@ namespace App\Jobs;
 
 use App\Models\Company;
 use App\Models\Lead;
-use App\Models\UsageEvent;
+use App\Services\AutomationEngine;
+use App\Services\Billing;
 use App\Services\EngineClient;
+use App\Services\InsufficientCredits;
 use App\Services\LeadScorer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,9 +25,16 @@ class EnrichCompany implements ShouldQueue
 
     public function __construct(public Company $company) {}
 
-    public function handle(EngineClient $engine, LeadScorer $scorer): void
+    public function handle(EngineClient $engine, LeadScorer $scorer, Billing $billing, AutomationEngine $automation): void
     {
         $c = $this->company;
+        try {
+            $billing->charge($c->organization_id, 'website_enrichment');
+        } catch (InsufficientCredits) {
+            $c->update(['enrichment_status' => 'no_credits']);
+
+            return;
+        }
         $region = $c->location?->countryCode() ?? 'PK';
         try {
             $data = $engine->enrichWebsite($c->website, $region);
@@ -50,11 +59,13 @@ class EnrichCompany implements ShouldQueue
             'enrichment_status' => 'enriched',
             'last_checked_at' => now(),
         ]);
-        UsageEvent::create(['organization_id' => $c->organization_id, 'kind' => 'website_enrichment', 'credits' => 1]);
 
-        Lead::withoutGlobalScopes()->where('company_id', $c->id)->get()->each(function (Lead $lead) use ($scorer) {
+        Lead::withoutGlobalScopes()->where('company_id', $c->id)->get()->each(function (Lead $lead) use ($scorer, $automation) {
             $scorer->score($lead);
             $lead->log('enriched', 'Website enriched', [], null);
+            $automation->fire('lead_scored', $lead);
         });
+
+        AnalyzeCompany::dispatch($c, $data['text'] ?? '');
     }
 }

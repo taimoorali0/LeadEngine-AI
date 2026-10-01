@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\Api\SettingsController;
 use App\Models\Lead;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -30,7 +31,7 @@ class LeadScorer
         ];
 
         try {
-            $rules = $lead->organization?->settings['scoring_rules'] ?? null;
+            $rules = SettingsController::for($lead->organization)['scoring_rules'];
             $result = $this->engine->score($input, $rules);
             $lead->update([
                 'score' => $result['score'],

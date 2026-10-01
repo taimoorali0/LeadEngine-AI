@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\EnrichCompany;
 use App\Models\AuditLog;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
@@ -58,6 +59,17 @@ class CompanyController extends Controller
         AuditLog::record('company.edited', $company, ['fields' => array_keys($data)]);
 
         return response()->json($company);
+    }
+
+    /** Re-run website enrichment + AI analysis on demand. */
+    public function analyze(Company $company): JsonResponse
+    {
+        $this->authorize('companies.edit');
+        abort_if(! $company->website, 422, 'This company has no website to analyze.');
+        $company->update(['enrichment_status' => 'pending']);
+        EnrichCompany::dispatch($company);
+
+        return response()->json(['queued' => true], 202);
     }
 
     public function destroy(Company $company): JsonResponse

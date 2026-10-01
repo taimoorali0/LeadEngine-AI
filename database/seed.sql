@@ -49,3 +49,11 @@ INSERT INTO industries (parent_id, slug, name_en)
 INSERT INTO industry_aliases (industry_id, alias)
  SELECT i.id, a FROM industries i, unnest(ARRAY['Property Dealer','Property Consultant','Estate Agent',
    'Property Agent','Dealer','Realtor']) a WHERE i.slug='real-estate';
+
+INSERT INTO permissions (key) VALUES ('reports.view'),('automation.manage'),('billing.manage'),('teams.manage');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key IN ('owner','super_admin') AND p.key IN ('reports.view','automation.manage','billing.manage','teams.manage');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'sales_manager' AND p.key IN ('reports.view','automation.manage','teams.manage');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'team_leader' AND p.key = 'reports.view';

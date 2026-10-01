@@ -16,7 +16,7 @@ class Company extends Model
         'classification_confidence', 'business_category', 'location_id', 'address_en', 'address_ar',
         'latitude', 'longitude', 'website', 'website_domain', 'google_place_id', 'rating', 'review_count',
         'business_status', 'description_en', 'description_ar', 'products', 'services', 'possible_needs',
-        'social_links', 'enrichment_status', 'last_checked_at',
+        'social_links', 'enrichment_status', 'last_checked_at', 'ai_summary', 'ai_analyzed_at',
     ];
 
     protected $casts = [
@@ -28,6 +28,7 @@ class Company extends Model
         'longitude' => 'float',
         'rating' => 'float',
         'last_checked_at' => 'datetime',
+        'ai_analyzed_at' => 'datetime',
     ];
 
     public static function normalizeName(string $name): string

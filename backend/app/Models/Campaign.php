@@ -17,6 +17,7 @@ class Campaign extends Model
     protected $fillable = [
         'organization_id', 'created_by', 'name', 'country_id', 'industry_id', 'company_type',
         'target_results', 'filters', 'status', 'progress', 'stats', 'last_run_at',
+        'refresh_interval_days', 'next_refresh_at',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class Campaign extends Model
         'progress' => 'array',
         'stats' => 'array',
         'last_run_at' => 'datetime',
+        'next_refresh_at' => 'datetime',
     ];
 
     public function country(): BelongsTo

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -16,7 +17,9 @@ class User extends Authenticatable
         'organization_id', 'role_id', 'name', 'email', 'password', 'locale', 'daily_lead_limit', 'is_active',
     ];
 
-    protected $hidden = ['password', 'two_factor_secret'];
+    protected $hidden = ['password', 'two_factor_secret', 'two_factor_recovery_codes'];
+
+    protected $appends = ['two_factor_enabled'];
 
     /** @var array<string, bool>|null */
     private ?array $permissionCache = null;
@@ -27,7 +30,20 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    public function getTwoFactorEnabledAttribute(): bool
+    {
+        return $this->two_factor_confirmed_at !== null;
+    }
+
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'team_user');
     }
 
     public function organization(): BelongsTo

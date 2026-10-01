@@ -90,3 +90,55 @@ def test_api_endpoints():
     assert c.get("/health").json() == {"status": "ok"}
     assert c.post("/phones/normalize", json={"numbers": ["3041234567"]}).json()[0]["normalized"] == "+923041234567"
     assert c.post("/scoring/score", json={"lead": {"has_email": True}}).json()["score"] == 20
+
+
+def test_rule_based_analysis_classifies_and_suggests_needs(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from app.models import AnalyzeRequest, IndustryOption
+    from app.services.ai import analyze_rules
+
+    req = AnalyzeRequest(
+        name="ABC Tissue Industries",
+        text="ABC is a Lahore based paper mill. We manufacture tissue paper, napkins and packaging boxes. "
+             "Our tissue manufacturing plant runs three lines. Our services include converting and printing.",
+        industries=[
+            IndustryOption(slug="paper-manufacturing", name="Paper Manufacturing", aliases=["paper mill", "paper"]),
+            IndustryOption(slug="tissue-manufacturing", name="Tissue Manufacturing", aliases=["tissue"],
+                           parent_slug="paper-manufacturing"),
+            IndustryOption(slug="healthcare", name="Healthcare", aliases=["hospital", "clinic"]),
+        ],
+        offerings=["Industrial automation", "Electrical maintenance"],
+    )
+    a = analyze_rules(req)
+    assert a.industry_slug == "paper-manufacturing" and a.sub_industry_slug == "tissue-manufacturing"
+    assert 40 <= a.confidence <= 95
+    assert a.possible_needs == ["Industrial automation", "Electrical maintenance"]
+    assert "Tissue paper" in a.products and "Converting" in a.services
+    assert a.summary.startswith("ABC is a Lahore based paper mill.")
+    assert a.provider == "rules"
+
+
+def test_analysis_without_matches_is_unclassified():
+    from app.models import AnalyzeRequest, IndustryOption
+    from app.services.ai import analyze_rules
+
+    a = analyze_rules(AnalyzeRequest(name="Zed", text="Hello world.", industries=[IndustryOption(slug="x", name="Xylophones")]))
+    assert a.industry_slug is None and a.confidence == 0
+
+
+def test_html_extraction_keeps_visible_text_only():
+    r = extract_from_html("<html><body><p>We make paper.</p><script>secret()</script></body></html>")
+    assert r.text == "We make paper."
+
+
+def test_ai_endpoint_falls_back_to_rules(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "bad")
+    import app.services.ai as ai
+
+    async def boom(*a, **k):
+        raise ai.httpx.ConnectError("down")
+
+    monkeypatch.setattr(ai, "analyze_openai", boom)
+    r = TestClient(app).post("/ai/analyze", json={"name": "X", "text": "A hospital and clinic.",
+                                                 "industries": [{"slug": "healthcare", "name": "Healthcare", "aliases": ["hospital"]}]})
+    assert r.json()["provider"] == "rules" and r.json()["industry_slug"] == "healthcare"

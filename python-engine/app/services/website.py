@@ -21,6 +21,7 @@ SOCIAL_HOSTS = {
 }
 CANDIDATE_PATHS = ("", "/contact", "/contact-us", "/about", "/about-us")
 _PHONE_RE = re.compile(r"(?:\+|00)?\d[\d\s().-]{7,16}\d")
+MAX_TEXT = 6000
 USER_AGENT = "LeadEngineBot/0.1 (+https://leadengine.ai/bot)"
 
 
@@ -48,12 +49,14 @@ def extract_from_html(html: str, default_region: str = "PK") -> WebsiteExtractio
                 social[name] = href
 
     desc = soup.find("meta", attrs={"name": "description"})
+    visible = re.sub(r"\s+", " ", text).strip()
     return WebsiteExtraction(
         emails=extract_emails(mailtos + " " + text),
         phones=phones,
         social_links=social,
         title=soup.title.string.strip() if soup.title and soup.title.string else None,
         description=desc.get("content") if desc else None,
+        text=visible[:MAX_TEXT],
     )
 
 
@@ -76,4 +79,6 @@ async def enrich_website(url: str, default_region: str = "PK") -> WebsiteExtract
             merged.social_links = {**page.social_links, **merged.social_links}
             merged.title = merged.title or page.title
             merged.description = merged.description or page.description
+            if len(merged.text) < MAX_TEXT:
+                merged.text = (merged.text + " " + page.text).strip()[:MAX_TEXT]
     return merged

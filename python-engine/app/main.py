@@ -5,8 +5,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.models import (
+    Analysis, AnalyzeRequest,
     CompanyRecord, DuplicateMatch, NormalizedPhone, ScoreResult, ScoringInput, ScoringRules, WebsiteExtraction,
 )
+from app.services.ai import analyze
 from app.services.dedup import find_duplicates
 from app.services.keywords import generate_keywords
 from app.services.phones import normalize_phone
@@ -69,3 +71,8 @@ def keywords(req: KeywordRequest):
 @app.post("/enrich/website", response_model=WebsiteExtraction)
 async def enrich(req: EnrichRequest):
     return await enrich_website(req.url, req.default_region)
+
+
+@app.post("/ai/analyze", response_model=Analysis)
+async def ai_analyze(req: AnalyzeRequest):
+    return await analyze(req)

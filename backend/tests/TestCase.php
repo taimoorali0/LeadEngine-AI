@@ -11,7 +11,7 @@ abstract class TestCase extends BaseTestCase
 {
     protected function makeUser(string $role = 'owner', ?Organization $org = null): User
     {
-        $org ??= Organization::firstOrCreate(['slug' => 'acme'], ['name' => 'Acme']);
+        $org ??= Organization::firstOrCreate(['slug' => 'acme'], ['name' => 'Acme', 'plan' => 'business', 'credit_balance' => 1000]);
 
         return User::create([
             'organization_id' => $org->id,

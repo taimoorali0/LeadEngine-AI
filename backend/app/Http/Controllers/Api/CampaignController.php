@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\RunCampaign;
 use App\Models\AuditLog;
 use App\Models\Campaign;
+use App\Services\Billing;
 use App\Services\EngineClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,10 @@ class CampaignController extends Controller
         $data = $this->validated($request, partial: true);
         DB::transaction(function () use ($campaign, $data) {
             $campaign->update($data);
+            if (array_key_exists('refresh_interval_days', $data)) {
+                $campaign->update(['next_refresh_at' => $data['refresh_interval_days'] && $campaign->last_run_at
+                    ? $campaign->last_run_at->addDays($data['refresh_interval_days']) : null]);
+            }
             if (array_key_exists('location_ids', $data)) {
                 $campaign->locations()->sync($data['location_ids']);
             }
@@ -78,9 +83,12 @@ class CampaignController extends Controller
         return response()->json($engine->keywords($data['company_type'], $data['languages'] ?? ['en']));
     }
 
-    public function run(Campaign $campaign): JsonResponse
+    public function run(Campaign $campaign, Billing $billing): JsonResponse
     {
         $this->authorize('campaigns.manage');
+        $org = $campaign->organization;
+        abort_if(! $billing->canRunCampaign($org, $campaign), 422, 'Your plan’s limit of running campaigns has been reached.');
+        abort_if($org->fresh()->credit_balance < 1, 422, 'Not enough credits. Top up or upgrade your plan.');
         abort_if(in_array($campaign->status, ['queued', 'running'], true), 409, 'Campaign is already running.');
         abort_if(! $campaign->keywords()->where('enabled', true)->exists(), 422, 'Campaign has no enabled keywords.');
 
@@ -109,6 +117,7 @@ class CampaignController extends Controller
             'industry_id' => 'nullable|exists:industries,id',
             'company_type' => "$req|string|max:120",
             'target_results' => 'integer|min:1|max:5000',
+            'refresh_interval_days' => 'nullable|integer|min:1|max:365',
             'filters' => 'array',
             'filters.must_have_phone' => 'boolean',
             'filters.must_have_website' => 'boolean',

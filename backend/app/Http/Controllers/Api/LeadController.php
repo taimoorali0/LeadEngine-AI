@@ -7,6 +7,8 @@ use App\Models\AuditLog;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\AutomationEngine;
+use App\Services\LeadAssigner;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,7 +51,7 @@ class LeadController extends Controller
             'activities.user:id,name', 'followUps'));
     }
 
-    public function update(Request $request, Lead $lead): JsonResponse
+    public function update(Request $request, Lead $lead, LeadAssigner $assigner, AutomationEngine $automation): JsonResponse
     {
         $user = $request->user();
         $this->ensureVisible($user, $lead);
@@ -65,21 +67,53 @@ class LeadController extends Controller
             $this->authorize('leads.assign');
         }
 
-        DB::transaction(function () use ($lead, $data) {
-            $before = $lead->only(['status', 'assigned_to']);
-            if (array_key_exists('assigned_to', $data) && $data['assigned_to'] && $lead->status === 'new' && ! isset($data['status'])) {
-                $data['status'] = 'assigned';
+        $previous = $lead->status;
+        DB::transaction(function () use ($lead, $data, $user, $assigner) {
+            if (array_key_exists('assigned_to', $data)) {
+                $assigner->assign($lead, $data['assigned_to'] ? User::find($data['assigned_to']) : null, $user);
             }
-            $lead->update($data);
-            if (isset($data['status']) && $data['status'] !== $before['status']) {
-                $lead->log('status_changed', null, ['from' => $before['status'], 'to' => $data['status']]);
-            }
-            if (array_key_exists('assigned_to', $data) && $data['assigned_to'] !== $before['assigned_to']) {
-                $lead->log('assigned', null, ['from' => $before['assigned_to'], 'to' => $data['assigned_to']]);
+            $from = $lead->status;
+            $lead->update(array_intersect_key($data, array_flip(['status', 'pipeline_position'])));
+            if (isset($data['status']) && $data['status'] !== $from) {
+                $lead->log('status_changed', null, ['from' => $from, 'to' => $data['status']]);
             }
         });
+        if ($lead->status !== $previous) {
+            $automation->fire('status_changed', $lead, ['previous_status' => $previous]);
+        }
 
         return response()->json($lead->fresh(['company:id,name_en', 'assignee:id,name']));
+    }
+
+    /** Call-prep brief for an agent (spec §59). Built from stored data; no AI call needed. */
+    public function brief(Request $request, Lead $lead): JsonResponse
+    {
+        $this->ensureVisible($request->user(), $lead);
+        $lead->load('company.industry', 'company.location.parent', 'company.phones', 'company.emails', 'assignee:id,name', 'campaign:id,name');
+        $c = $lead->company;
+        $last = $lead->activities()->whereIn('type', ['call', 'email', 'meeting', 'whatsapp', 'note'])->with('user:id,name')->limit(5)->get();
+
+        return response()->json([
+            'company' => $c->name_en,
+            'location' => collect([$c->location?->name_en, $c->location?->parent?->name_en])->filter()->implode(', '),
+            'industry' => $c->industry?->name_en,
+            'website' => $c->website,
+            'summary' => $c->ai_summary ?? $c->description_en,
+            'summary_is_ai' => $c->ai_summary !== null,
+            'products' => $c->products,
+            'services' => $c->services,
+            'possible_needs' => $c->possible_needs,
+            'phones' => $c->phones->pluck('normalized')->filter()->values(),
+            'emails' => $c->emails->pluck('email'),
+            'rating' => $c->rating ? "{$c->rating} ({$c->review_count} reviews)" : null,
+            'score' => $lead->score,
+            'quality' => $lead->quality,
+            'status' => $lead->status,
+            'assigned_agent' => $lead->assignee?->name,
+            'contacted' => $last->isNotEmpty(),
+            'recent_activity' => $last->map(fn ($a) => ['type' => $a->type, 'body' => $a->body, 'at' => $a->created_at, 'by' => $a->user?->name]),
+            'next_follow_up_at' => $lead->next_follow_up_at,
+        ]);
     }
 
     public function addNote(Request $request, Lead $lead): JsonResponse

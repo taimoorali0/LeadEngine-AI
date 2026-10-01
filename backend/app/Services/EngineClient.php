@@ -52,4 +52,9 @@ class EngineClient
     {
         return $this->http()->timeout(90)->post('/enrich/website', ['url' => $url, 'default_region' => $region])->json();
     }
+
+    public function analyze(array $payload): array
+    {
+        return $this->http()->timeout(90)->post('/ai/analyze', $payload)->json();
+    }
 }

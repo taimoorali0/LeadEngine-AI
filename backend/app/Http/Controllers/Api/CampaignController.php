@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\RunCampaign;
 use App\Models\AuditLog;
 use App\Models\Campaign;
+use App\Models\Location;
 use App\Services\Billing;
 use App\Services\EngineClient;
 use Illuminate\Http\JsonResponse;
@@ -75,6 +76,58 @@ class CampaignController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /** Preview search coverage and credit use before a campaign is saved. */
+    public function preview(Request $request, EngineClient $engine, Billing $billing): JsonResponse
+    {
+        $data = $request->validate([
+            'company_type' => 'required|string|max:120',
+            'country_id' => ['required', Rule::exists('locations', 'id')->where('level', 'country')],
+            'location_ids' => 'array',
+            'location_ids.*' => 'exists:locations,id',
+            'target_results' => 'nullable|integer|min:1|max:5000',
+            'languages' => 'array',
+            'search_depth' => 'nullable|in:quick,standard,deep',
+        ]);
+
+        try {
+            $keywords = $engine->keywords($data['company_type'], $data['languages'] ?? ['en']);
+        } catch (\Throwable) {
+            $keywords = [$data['company_type']];
+        }
+
+        $depth = $data['search_depth'] ?? 'standard';
+        if ($depth === 'quick') {
+            $keywords = array_slice($keywords, 0, 4);
+        }
+
+        $locations = Location::whereIn('id', $data['location_ids'] ?? [])->get();
+        $areaCount = max(1, $locations->count());
+        if ($depth === 'deep') {
+            $areaCount = max(1, $locations->sum(function (Location $location) {
+                if ($location->level !== 'city') return 1;
+                $children = $location->children()->count();
+                return $children ?: 1;
+            }));
+        }
+
+        $queries = max(1, count($keywords) * $areaCount);
+        $searchCredits = $queries * (int) ($billing->cost('google_search')['credits'] ?? 1);
+        $target = (int) ($data['target_results'] ?? 500);
+        $low = min($target, max(10, $queries * 4));
+        $high = min($target, max($low, $queries * 12));
+
+        return response()->json([
+            'keywords' => array_values($keywords),
+            'keyword_count' => count($keywords),
+            'area_count' => $areaCount,
+            'estimated_queries' => $queries,
+            'estimated_search_credits' => $searchCredits,
+            'estimated_companies_low' => $low,
+            'estimated_companies_high' => $high,
+            'search_depth' => $depth,
+        ]);
+    }
+
     /** Suggest search keywords without saving (spec §8). */
     public function suggestKeywords(Request $request, EngineClient $engine): JsonResponse
     {
@@ -124,6 +177,11 @@ class CampaignController extends Controller
             'filters.min_rating' => 'nullable|numeric|between:0,5',
             'filters.min_reviews' => 'nullable|integer|min:0',
             'filters.languages' => 'array',
+            'filters.objective' => 'nullable|in:find_customers,sell_services,find_suppliers,find_manufacturers,find_distributors,market_research',
+            'filters.search_depth' => 'nullable|in:quick,standard,deep',
+            'filters.coverage_mode' => 'nullable|in:whole_city,selected_areas,radius',
+            'filters.exclusions' => 'array',
+            'filters.exclusions.*' => 'string|max:120',
             'location_ids' => 'array',
             'location_ids.*' => 'exists:locations,id',
             'keywords' => 'array',

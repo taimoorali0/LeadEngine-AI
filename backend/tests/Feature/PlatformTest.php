@@ -169,14 +169,28 @@ class PlatformTest extends TestCase
         $billing->charge($org->id, 'ai_analysis');
     }
 
-    public function test_billing_endpoints_and_plan_change(): void
+    public function test_billing_uses_manual_super_admin_approval(): void
     {
         $owner = $this->makeUser('owner');
         $this->actingAs($owner)->getJson('/api/billing')->assertOk()->assertJsonPath('plan_key', 'business');
-        $this->postJson('/api/billing/plan', ['plan' => 'enterprise'])->assertOk()
-            ->assertJsonPath('plan_key', 'enterprise')->assertJsonPath('credit_balance', 100000);
+
+        $request = $this->postJson('/api/billing/requests', [
+            'type' => 'upgrade',
+            'requested_plan' => 'enterprise',
+            'payment_method' => 'bank_transfer',
+            'transaction_reference' => 'TX-1001',
+        ])->assertCreated()->json();
+
+        $this->assertSame('business', $owner->organization->fresh()->plan);
         $this->getJson('/api/admin/costs')->assertForbidden();
-        $this->actingAs($this->makeUser('agent', $owner->organization))->postJson('/api/billing/plan', ['plan' => 'starter'])->assertForbidden();
+
+        $admin = $this->makeUser('super_admin');
+        $this->actingAs($admin)->patchJson("/api/admin/billing/requests/{$request['id']}", [
+            'status' => 'approved',
+        ])->assertOk()->assertJsonPath('status', 'approved');
+
+        $this->assertSame('enterprise', $owner->organization->fresh()->plan);
+        $this->assertSame(100000, $owner->organization->fresh()->credit_balance);
     }
 
     public function test_notifications_list_and_mark_read(): void

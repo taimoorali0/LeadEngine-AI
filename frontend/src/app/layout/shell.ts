@@ -94,7 +94,7 @@ interface NavGroup { title: string; items: NavItem[] }
           </div>
 
           <div class="ms-auto flex items-center gap-2">
-            @if (!isPlatformAdmin()) {
+            @if (!isPlatformAdmin() && isOperational()) {
               <a routerLink="/campaigns/new" class="btn-primary hidden sm:inline-flex">＋ {{ 'Find companies' | t }}</a>
             }
 
@@ -131,7 +131,15 @@ interface NavGroup { title: string; items: NavItem[] }
           </div>
         </header>
 
-        <main class="mx-auto max-w-[1600px] p-4 md:p-6 lg:p-8"><router-outlet /></main>
+        <main class="mx-auto max-w-[1600px] p-4 md:p-6 lg:p-8">
+          @if (!isPlatformAdmin() && !isOperational()) {
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div><b>{{ subscriptionTitle() }}</b> — {{ auth.user()?.organization?.suspension_reason || ('Your account is in read-only mode. Submit a renewal or reactivation request to continue campaigns and exports.' | t) }}</div>
+              <a routerLink="/plan" class="rounded-lg bg-amber-900 px-3 py-2 text-xs font-bold text-white">{{ 'Open Plan & Usage' | t }}</a>
+            </div>
+          }
+          <router-outlet />
+        </main>
       </div>
     </div>
   `,
@@ -189,6 +197,11 @@ export class Shell {
   ];
 
   protected isPlatformAdmin = computed(() => this.auth.user()?.role?.key === 'super_admin');
+  protected isOperational = computed(() => ['active', 'trialing'].includes(this.auth.user()?.organization?.subscription_status ?? 'active'));
+  protected subscriptionTitle = computed(() => {
+    const s = this.auth.user()?.organization?.subscription_status ?? 'active';
+    return s === 'suspended' ? 'Account suspended' : s === 'expired' ? 'Subscription expired' : s === 'past_due' ? 'Subscription past due' : 'Subscription inactive';
+  });
   protected initials = computed(() => (this.auth.user()?.name ?? 'LE').split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase());
 
   protected nav = computed(() => {

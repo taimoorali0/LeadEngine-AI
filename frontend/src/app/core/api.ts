@@ -70,7 +70,11 @@ export class Api {
 
   reports(from: string, to: string) { return this.http.get<any>('/api/reports', { params: params({ from, to }) }); }
   billing() { return this.http.get<any>('/api/billing'); }
-  changePlan(plan: string) { return this.http.post<any>('/api/billing/plan', { plan }); }
+  submitBillingRequest(body: FormData) { return this.http.post<any>('/api/billing/requests', body); }
+  adminBillingRequests(status?: string) { return this.http.get<any>('/api/admin/billing/requests', { params: params({ status }) }); }
+  reviewBillingRequest(id: number, body: { status: string; admin_note?: string }) {
+    return this.http.patch<any>(`/api/admin/billing/requests/${id}`, body);
+  }
   adminCosts() { return this.http.get<any>('/api/admin/costs'); }
 
   companies(p: Params) { return this.http.get<Page<Company>>('/api/companies', { params: params(p) }); }

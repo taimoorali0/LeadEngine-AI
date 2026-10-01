@@ -77,6 +77,7 @@ export class Api {
   reviewBillingRequest(id: number, body: { status: string; admin_note?: string }) {
     return this.http.patch<any>(`/api/admin/billing/requests/${id}`, body);
   }
+  billingProof(id: number) { return this.http.get(`/api/admin/billing/requests/${id}/proof`, { responseType: 'blob' }); }
   adminCosts() { return this.http.get<any>('/api/admin/costs'); }
   adminOrganizations(p: Params = {}) { return this.http.get<any>('/api/admin/organizations', { params: params(p) }); }
   updateAdminOrganization(id: number, body: unknown) { return this.http.patch<any>(`/api/admin/organizations/${id}`, body); }

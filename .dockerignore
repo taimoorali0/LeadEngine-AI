@@ -1,0 +1,10 @@
+**/node_modules
+**/vendor
+**/.angular
+**/dist
+**/__pycache__
+**/.pytest_cache
+backend/.env
+backend/storage/logs/*
+backend/storage/framework/*/*
+.git

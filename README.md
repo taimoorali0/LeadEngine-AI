@@ -4,6 +4,15 @@ Multi-industry business discovery, enrichment, lead scoring and CRM platform.
 
 **Search → Discover → Verify → Enrich → Score → Assign → Follow Up → Convert**
 
+## Install
+
+**→ See [docs/INSTALL.md](docs/INSTALL.md).** Short version:
+
+- **Any computer (Docker):** `docker compose up -d --build`, then open http://localhost:8080
+- **Ubuntu server:** `sudo bash deploy/ubuntu/install.sh`, then open http://your-server-ip
+
+Demo login: `owner@leadengine.test` / `password`.
+
 ## Repository layout
 
 | Path | Status | Purpose |
@@ -36,7 +45,7 @@ psql -d leadengine -f database/schema.sql -f database/seed.sql
 ## Running everything locally
 
 ```bash
-# 1. Services: PostgreSQL + Redis (or `docker compose up database redis python-engine`)
+# 1. Services: PostgreSQL + Redis running locally
 # 2. Python engine
 cd python-engine && uvicorn app.main:app --port 8001
 # 3. Laravel API
@@ -57,6 +66,3 @@ Without it, campaign runs end as **failed**, with every query counted under *fai
 
 Tests: `cd backend && php artisan test` (needs a `leadengine_test` PostgreSQL database), `cd python-engine && pytest`.
 
-## Local stack
-
-`docker compose up` starts PostgreSQL (auto-loads the schema and seed), Redis and the Python engine.

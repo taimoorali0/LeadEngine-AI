@@ -1,24 +1,85 @@
+# Full LeadEngine AI stack:  docker compose up -d --build   →  http://localhost:8080
+# Optional settings go in a .env file next to this one (see .env.example).
+
+x-backend: &backend
+  build: { context: ., dockerfile: deploy/docker/backend.Dockerfile }
+  image: leadengine-backend
+  restart: unless-stopped
+  depends_on: [database, redis]
+  volumes: [storage:/var/www/html/storage]
+  environment: &backend-env
+    APP_NAME: LeadEngine AI
+    APP_ENV: production
+    APP_DEBUG: "false"
+    APP_KEY: ${APP_KEY:-}
+    APP_URL: ${APP_URL:-http://localhost:8080}
+    LOG_CHANNEL: stderr
+    DB_CONNECTION: pgsql
+    DB_HOST: database
+    DB_PORT: "5432"
+    DB_DATABASE: leadengine
+    DB_USERNAME: leadengine
+    DB_PASSWORD: ${DB_PASSWORD:-leadengine}
+    REDIS_HOST: redis
+    QUEUE_CONNECTION: redis
+    CACHE_STORE: redis
+    SESSION_DRIVER: redis
+    BROADCAST_CONNECTION: reverb
+    REVERB_APP_ID: leadengine
+    REVERB_APP_KEY: leadengine-key
+    REVERB_APP_SECRET: ${REVERB_APP_SECRET:-change-me-reverb-secret}
+    REVERB_HOST: reverb
+    REVERB_PORT: "8080"
+    REVERB_SCHEME: http
+    PYTHON_ENGINE_URL: http://python-engine:8001
+    GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+
 services:
   database:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: leadengine
       POSTGRES_USER: leadengine
-      POSTGRES_PASSWORD: leadengine
-    ports: ["5432:5432"]
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-leadengine}
+    volumes: [pgdata:/var/lib/postgresql/data]
+
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    restart: unless-stopped
+
   python-engine:
     build: ./python-engine
-    ports: ["8001:8001"]
+    restart: unless-stopped
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-    depends_on: [redis]
+
+  backend:
+    <<: *backend
+    environment: { <<: *backend-env, ROLE: api }
+
+  worker:
+    <<: *backend
+    command: php artisan queue:work --tries=3 --timeout=3600
+    user: www-data
+
+  scheduler:
+    <<: *backend
+    command: php artisan schedule:work
+    user: www-data
+
+  reverb:
+    <<: *backend
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    user: www-data
+
+  frontend:
+    build: { context: ., dockerfile: deploy/docker/frontend.Dockerfile }
+    restart: unless-stopped
+    depends_on: [backend, reverb]
+    ports: ["${PORT:-8080}:80"]
+
 volumes:
   pgdata:
+  storage:

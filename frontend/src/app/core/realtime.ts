@@ -8,8 +8,9 @@ import { AuthService } from './auth';
 /** Overridable at deploy time via window.__LEADENGINE__ (see index.html). */
 const cfg = {
   reverbKey: 'leadengine-key',
+  // Same host and port as the app: nginx (or the dev proxy) forwards /app to Reverb.
   reverbHost: location.hostname,
-  reverbPort: 8080,
+  reverbPort: Number(location.port) || (location.protocol === 'https:' ? 443 : 80),
   forceTLS: location.protocol === 'https:',
   ...((window as unknown as { __LEADENGINE__?: object }).__LEADENGINE__ ?? {}),
 };

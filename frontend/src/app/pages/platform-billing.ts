@@ -21,7 +21,7 @@ import { Api } from '../core/api';
               <tr class="border-t border-slate-100">
                 <td class="td"><div class="font-semibold text-slate-900">{{ r.organization?.name }}</div><div class="text-xs text-slate-500">{{ r.requester?.name }} · {{ r.requester?.email }}</div></td>
                 <td class="td"><div class="font-semibold">{{ label(r.type) }}</div><div class="text-xs text-slate-500">{{ r.requested_plan || (r.requested_credits ? (r.requested_credits | number) + ' credits' : '') }}</div></td>
-                <td class="td"><div>{{ r.amount ? (r.amount | number:'1.0-2') + ' ' + r.currency : '—' }}</div><div class="text-xs text-slate-500">{{ r.payment_method || '' }} {{ r.transaction_reference || '' }}</div></td>
+                <td class="td"><div>{{ r.amount ? (r.amount | number:'1.0-2') + ' ' + r.currency : '—' }}</div><div class="text-xs text-slate-500">{{ r.payment_method || '' }} {{ r.transaction_reference || '' }}</div>@if(r.payment_proof_url){<a class="mt-1 inline-block text-xs font-semibold text-violet-700" [href]="r.payment_proof_url" target="_blank" rel="noopener">View proof ↗</a>}</td>
                 <td class="td">{{ r.created_at | date:'medium' }}</td>
                 <td class="td"><span class="badge" [class]="statusClass(r.status)">{{ label(r.status) }}</span></td>
                 <td class="td text-end">

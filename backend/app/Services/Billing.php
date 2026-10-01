@@ -43,6 +43,10 @@ class Billing
 
     public function canRunCampaign(Organization $org, ?Campaign $except = null): bool
     {
+        if (! $this->isOperational($org)) {
+            return false;
+        }
+
         $limit = $this->plan($org)['active_campaigns'];
         $active = Campaign::withoutGlobalScopes()->where('organization_id', $org->id)
             ->whereIn('status', ['queued', 'running'])->when($except, fn ($q) => $q->whereKeyNot($except->id))->count();

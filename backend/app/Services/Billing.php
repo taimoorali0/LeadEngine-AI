@@ -21,8 +21,21 @@ class Billing
         return in_array($feature, $this->plan($org)['features'], true);
     }
 
+    public function isOperational(Organization $org): bool
+    {
+        return in_array($org->subscription_status ?? 'active', ['trialing', 'active'], true);
+    }
+
+    public function assertOperational(Organization $org): void
+    {
+        abort_unless($this->isOperational($org), 402, 'Your subscription is not active. Submit a renewal or reactivation request.');
+    }
+
     public function canAddUser(Organization $org): bool
     {
+        if (! $this->isOperational($org)) {
+            return false;
+        }
         $limit = $this->plan($org)['users'];
 
         return $limit === null || $org->users()->where('is_active', true)->count() < $limit;
@@ -30,6 +43,10 @@ class Billing
 
     public function canRunCampaign(Organization $org, ?Campaign $except = null): bool
     {
+        if (! $this->isOperational($org)) {
+            return false;
+        }
+
         $limit = $this->plan($org)['active_campaigns'];
         $active = Campaign::withoutGlobalScopes()->where('organization_id', $org->id)
             ->whereIn('status', ['queued', 'running'])->when($except, fn ($q) => $q->whereKeyNot($except->id))->count();
@@ -79,6 +96,6 @@ class Billing
         if ($org->credit_balance < $allowance) {
             $this->grant($org, $allowance - $org->credit_balance, 'monthly_renewal');
         }
-        $org->forceFill(['plan_renews_at' => now()->addMonth()])->save();
+        $org->forceFill(['plan_renews_at' => now()->addMonth(), 'subscription_status' => 'active', 'suspended_at' => null, 'suspension_reason' => null])->save();
     }
 }

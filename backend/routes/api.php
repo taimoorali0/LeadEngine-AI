@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingsController;
@@ -32,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('search', SearchController::class);
     Route::get('locations', [LookupController::class, 'locations']);
     Route::get('industries', [LookupController::class, 'industries']);
+    Route::get('taxonomy', [LookupController::class, 'taxonomy']);
 
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/read', [NotificationController::class, 'markRead']);
@@ -48,11 +50,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('automations', AutomationController::class)->except('show');
 
     Route::get('billing', [BillingController::class, 'show']);
-    Route::post('billing/plan', [BillingController::class, 'changePlan']);
+    Route::post('billing/requests', [BillingController::class, 'submitRequest']);
+    Route::get('admin/billing/requests', [BillingController::class, 'requests']);
+    Route::patch('admin/billing/requests/{billingRequest}', [BillingController::class, 'review']);
+    Route::get('admin/billing/requests/{billingRequest}/proof', [BillingController::class, 'proof']);
+    Route::post('admin/billing/plan', [BillingController::class, 'changePlan']);
     Route::post('admin/organizations/{organization}/credits', [BillingController::class, 'grant']);
     Route::get('admin/costs', [BillingController::class, 'costs']);
+    Route::get('admin/organizations', [PlatformController::class, 'organizations']);
+    Route::patch('admin/organizations/{organization}', [PlatformController::class, 'updateOrganization']);
 
     Route::post('keywords/suggest', [CampaignController::class, 'suggestKeywords']);
+    Route::post('campaigns/preview', [CampaignController::class, 'preview']);
     Route::post('campaigns/{campaign}/run', [CampaignController::class, 'run']);
     Route::apiResource('campaigns', CampaignController::class);
 

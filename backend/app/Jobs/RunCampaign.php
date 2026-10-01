@@ -41,6 +41,10 @@ class RunCampaign implements ShouldQueue
         $automation ??= app(AutomationEngine::class);
         $campaign = $this->campaign;
         $keywords = $campaign->keywords()->where('enabled', true)->pluck('keyword');
+        $depth = $campaign->filter('search_depth', 'standard');
+        if ($depth === 'quick') {
+            $keywords = $keywords->take(4);
+        }
         $areas = $this->areas($campaign);
         $region = $campaign->country?->iso_code ?? 'PK';
         $isRerun = $campaign->runs()->exists();
@@ -170,12 +174,28 @@ class RunCampaign implements ShouldQueue
         }
     }
 
-    /** @return list<SearchArea> one per selected location, or the country as a single area */
+    /** @return list<SearchArea> one per selected location. Deep mode expands a whole city into its known areas. */
     private function areas(Campaign $campaign): array
     {
         $locations = $campaign->locations()->with('parent.parent.parent')->get();
         if ($locations->isEmpty()) {
             $locations = collect([$campaign->country]);
+        }
+
+        if ($campaign->filter('search_depth', 'standard') === 'deep') {
+            $expanded = collect();
+            foreach ($locations as $location) {
+                if ($location->level === 'city') {
+                    $children = $location->children()->orderByDesc('search_priority')->with('parent.parent.parent')->get();
+                    if ($children->isNotEmpty()) {
+                        $expanded->push(...$children);
+
+                        continue;
+                    }
+                }
+                $expanded->push($location);
+            }
+            $locations = $expanded;
         }
 
         return $locations->map(function (Location $l) {
@@ -192,6 +212,14 @@ class RunCampaign implements ShouldQueue
 
     private function passesFilters(DiscoveredBusiness $b, Campaign $c): bool
     {
+        $haystack = mb_strtolower(trim($b->name.' '.($b->category ?? '')));
+        foreach ((array) $c->filter('exclusions', []) as $excluded) {
+            $excluded = mb_strtolower(trim((string) $excluded));
+            if ($excluded !== '' && str_contains($haystack, $excluded)) {
+                return false;
+            }
+        }
+
         return ! ($c->filter('must_have_phone') && ! $b->phone)
             && ! ($c->filter('must_have_website') && ! $b->website)
             && ! (($min = $c->filter('min_rating')) && ($b->rating ?? 0) < $min)

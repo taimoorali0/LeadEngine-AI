@@ -8,6 +8,7 @@ use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\AutomationEngine;
+use App\Services\Billing;
 use App\Services\LeadAssigner;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -179,9 +180,12 @@ class LeadController extends Controller
     }
 
     /** CSV export, limited by export permission (spec §56). */
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request, Billing $billing): StreamedResponse
     {
         $user = $request->user();
+        if (! $user->isSuperAdmin()) {
+            $billing->assertOperational($user->organization);
+        }
         $q = $this->filtered($request)->with('company.phones', 'company.emails', 'company.location', 'assignee:id,name');
         if ($user->isSuperAdmin() || $user->hasPermission('leads.export_all')) {
             // no restriction

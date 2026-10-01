@@ -19,6 +19,7 @@ export class Api {
 
   locations(parentId?: number) { return this.http.get<Location[]>('/api/locations', { params: params({ parent_id: parentId }) }); }
   industries() { return this.http.get<Industry[]>('/api/industries'); }
+  taxonomy(sectorId?: number) { return this.http.get<any>('/api/taxonomy', { params: params({ sector_id: sectorId }) }); }
   users() { return this.http.get<{ id: number; name: string }[]>('/api/users'); }
 
   campaigns() { return this.http.get<Page<Campaign>>('/api/campaigns'); }
@@ -27,6 +28,7 @@ export class Api {
   updateCampaign(id: number, body: unknown) { return this.http.put<Campaign>(`/api/campaigns/${id}`, body); }
   runCampaign(id: number) { return this.http.post<Campaign>(`/api/campaigns/${id}/run`, {}); }
   suggestKeywords(company_type: string, languages: string[]) { return this.http.post<string[]>('/api/keywords/suggest', { company_type, languages }); }
+  previewCampaign(body: unknown) { return this.http.post<any>('/api/campaigns/preview', body); }
 
   leads(p: Params) { return this.http.get<Page<Lead>>('/api/leads', { params: params(p) }); }
   board() { return this.http.get<Partial<Record<string, Lead[]>>>('/api/leads/board'); }
@@ -70,8 +72,15 @@ export class Api {
 
   reports(from: string, to: string) { return this.http.get<any>('/api/reports', { params: params({ from, to }) }); }
   billing() { return this.http.get<any>('/api/billing'); }
-  changePlan(plan: string) { return this.http.post<any>('/api/billing/plan', { plan }); }
+  submitBillingRequest(body: FormData) { return this.http.post<any>('/api/billing/requests', body); }
+  adminBillingRequests(status?: string) { return this.http.get<any>('/api/admin/billing/requests', { params: params({ status }) }); }
+  reviewBillingRequest(id: number, body: { status: string; admin_note?: string }) {
+    return this.http.patch<any>(`/api/admin/billing/requests/${id}`, body);
+  }
+  billingProof(id: number) { return this.http.get(`/api/admin/billing/requests/${id}/proof`, { responseType: 'blob' }); }
   adminCosts() { return this.http.get<any>('/api/admin/costs'); }
+  adminOrganizations(p: Params = {}) { return this.http.get<any>('/api/admin/organizations', { params: params(p) }); }
+  updateAdminOrganization(id: number, body: unknown) { return this.http.patch<any>(`/api/admin/organizations/${id}`, body); }
 
   companies(p: Params) { return this.http.get<Page<Company>>('/api/companies', { params: params(p) }); }
   company(id: number) { return this.http.get<Company>(`/api/companies/${id}`); }

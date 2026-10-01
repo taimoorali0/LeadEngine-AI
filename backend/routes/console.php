@@ -4,6 +4,8 @@ use App\Jobs\RunCampaign;
 use App\Models\Campaign;
 use App\Models\FollowUp;
 use App\Models\Organization;
+use App\Models\Role;
+use App\Models\User;
 use App\Notifications\AppNotification;
 use App\Services\Billing;
 use Illuminate\Support\Facades\Artisan;
@@ -37,12 +39,38 @@ Artisan::command('campaigns:refresh', function (Billing $billing) {
     $this->info("Queued {$campaigns->count()} campaign refreshes.");
 })->purpose('Re-run campaigns whose refresh interval has elapsed');
 
-Artisan::command('billing:renew', function (Billing $billing) {
-    $orgs = Organization::where(fn ($q) => $q->whereNull('plan_renews_at')->orWhere('plan_renews_at', '<=', now()))->get();
-    $orgs->each(fn (Organization $o) => $billing->renew($o));
-    $this->info("Renewed {$orgs->count()} organizations.");
-})->purpose('Grant monthly plan credits');
+Artisan::command('subscriptions:expire', function () {
+    $orgs = Organization::whereIn('subscription_status', ['active', 'trialing'])
+        ->whereNotNull('plan_renews_at')->where('plan_renews_at', '<=', now())->get();
+    foreach ($orgs as $org) {
+        $org->update(['subscription_status' => 'expired']);
+    }
+    $this->info("Expired {$orgs->count()} organizations awaiting manual renewal approval.");
+})->purpose('Expire subscriptions when their approved period ends');
+
+Artisan::command('platform:create-admin {email?}', function (?string $email = null) {
+    $email ??= $this->ask('Super Admin email');
+    $name = $this->ask('Name', 'Platform Administrator');
+    $password = $this->secret('Password (minimum 10 characters)');
+    if (! $email || ! $password || mb_strlen($password) < 10) {
+        $this->error('A valid email and password of at least 10 characters are required.');
+        return 1;
+    }
+
+    $roleId = Role::where('key', 'super_admin')->value('id');
+    if (! $roleId) {
+        $this->error('Super Admin role is missing. Run migrations/seed first.');
+        return 1;
+    }
+
+    $user = User::updateOrCreate(
+        ['email' => $email],
+        ['organization_id' => null, 'role_id' => $roleId, 'name' => $name, 'password' => $password, 'is_active' => true]
+    );
+    $this->info("Super Admin ready: {$user->email}");
+    return 0;
+})->purpose('Create or reset the platform Super Admin account');
 
 Schedule::command('followups:remind')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('campaigns:refresh')->hourly()->withoutOverlapping();
-Schedule::command('billing:renew')->dailyAt('00:30');
+Schedule::command('subscriptions:expire')->dailyAt('00:30');

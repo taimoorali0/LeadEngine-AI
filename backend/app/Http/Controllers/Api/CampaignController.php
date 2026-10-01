@@ -23,9 +23,10 @@ class CampaignController extends Controller
         );
     }
 
-    public function store(Request $request, EngineClient $engine): JsonResponse
+    public function store(Request $request, EngineClient $engine, Billing $billing): JsonResponse
     {
         $this->authorize('campaigns.manage');
+        $billing->assertOperational($request->user()->organization);
         $data = $this->validated($request);
 
         $campaign = DB::transaction(function () use ($data, $request, $engine) {
@@ -140,6 +141,7 @@ class CampaignController extends Controller
     {
         $this->authorize('campaigns.manage');
         $org = $campaign->organization;
+        $billing->assertOperational($org);
         abort_if(! $billing->canRunCampaign($org, $campaign), 422, 'Your plan’s limit of running campaigns has been reached.');
         abort_if($org->fresh()->credit_balance < 1, 422, 'Not enough credits. Top up or upgrade your plan.');
         abort_if(in_array($campaign->status, ['queued', 'running'], true), 409, 'Campaign is already running.');

@@ -139,7 +139,7 @@ class AuthController extends Controller
 
     private function profile(User $user): array
     {
-        return $user->load('role:id,key,name', 'organization:id,name,slug,plan,credit_balance')->toArray()
+        return $user->load('role:id,key,name', 'organization:id,name,slug,plan,credit_balance,plan_renews_at,subscription_status,suspension_reason')->toArray()
             + ['permissions' => $user->isSuperAdmin() ? ['*'] : $user->permissionKeys()];
     }
 }

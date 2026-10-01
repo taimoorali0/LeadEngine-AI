@@ -78,6 +78,8 @@ export class Api {
     return this.http.patch<any>(`/api/admin/billing/requests/${id}`, body);
   }
   adminCosts() { return this.http.get<any>('/api/admin/costs'); }
+  adminOrganizations(p: Params = {}) { return this.http.get<any>('/api/admin/organizations', { params: params(p) }); }
+  updateAdminOrganization(id: number, body: unknown) { return this.http.patch<any>(`/api/admin/organizations/${id}`, body); }
 
   companies(p: Params) { return this.http.get<Page<Company>>('/api/companies', { params: params(p) }); }
   company(id: number) { return this.http.get<Company>(`/api/companies/${id}`); }

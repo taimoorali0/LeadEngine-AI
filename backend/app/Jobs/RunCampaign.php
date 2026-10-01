@@ -211,6 +211,14 @@ class RunCampaign implements ShouldQueue
 
     private function passesFilters(DiscoveredBusiness $b, Campaign $c): bool
     {
+        $haystack = mb_strtolower(trim($b->name.' '.($b->category ?? '')));
+        foreach ((array) $c->filter('exclusions', []) as $excluded) {
+            $excluded = mb_strtolower(trim((string) $excluded));
+            if ($excluded !== '' && str_contains($haystack, $excluded)) {
+                return false;
+            }
+        }
+
         return ! ($c->filter('must_have_phone') && ! $b->phone)
             && ! ($c->filter('must_have_website') && ! $b->website)
             && ! (($min = $c->filter('min_rating')) && ($b->rating ?? 0) < $min)

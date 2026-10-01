@@ -105,8 +105,11 @@ class CampaignController extends Controller
         $areaCount = max(1, $locations->count());
         if ($depth === 'deep') {
             $areaCount = max(1, $locations->sum(function (Location $location) {
-                if ($location->level !== 'city') return 1;
+                if ($location->level !== 'city') {
+                    return 1;
+                }
                 $children = $location->children()->count();
+
                 return $children ?: 1;
             }));
         }

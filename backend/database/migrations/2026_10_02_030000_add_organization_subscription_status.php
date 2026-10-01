@@ -17,6 +17,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('organizations', fn (Blueprint $t) => $t->dropColumn(['subscription_status','suspended_at','suspension_reason']));
+        Schema::table('organizations', fn (Blueprint $t) => $t->dropColumn(['subscription_status', 'suspended_at', 'suspension_reason']));
     }
 };

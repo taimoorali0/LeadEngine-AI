@@ -33,7 +33,9 @@ class Billing
 
     public function canAddUser(Organization $org): bool
     {
-        if (! $this->isOperational($org)) return false;
+        if (! $this->isOperational($org)) {
+            return false;
+        }
         $limit = $this->plan($org)['users'];
 
         return $limit === null || $org->users()->where('is_active', true)->count() < $limit;

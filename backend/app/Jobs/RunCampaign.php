@@ -189,6 +189,7 @@ class RunCampaign implements ShouldQueue
                     $children = $location->children()->orderByDesc('search_priority')->with('parent.parent.parent')->get();
                     if ($children->isNotEmpty()) {
                         $expanded->push(...$children);
+
                         continue;
                     }
                 }

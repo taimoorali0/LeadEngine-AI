@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class BillingRequest extends Model
 {
@@ -14,18 +13,11 @@ class BillingRequest extends Model
         'payment_proof_path', 'message', 'status', 'admin_note', 'reviewed_by', 'reviewed_at',
     ];
 
-    protected $appends = ['payment_proof_url'];
-
     protected $casts = [
         'amount' => 'decimal:2',
         'payment_date' => 'date',
         'reviewed_at' => 'datetime',
     ];
-
-    public function getPaymentProofUrlAttribute(): ?string
-    {
-        return $this->payment_proof_path ? Storage::disk('public')->url($this->payment_proof_path) : null;
-    }
 
     public function organization(): BelongsTo
     {

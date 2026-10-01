@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingsController;
@@ -55,6 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin/billing/plan', [BillingController::class, 'changePlan']);
     Route::post('admin/organizations/{organization}/credits', [BillingController::class, 'grant']);
     Route::get('admin/costs', [BillingController::class, 'costs']);
+    Route::get('admin/organizations', [PlatformController::class, 'organizations']);
+    Route::patch('admin/organizations/{organization}', [PlatformController::class, 'updateOrganization']);
 
     Route::post('keywords/suggest', [CampaignController::class, 'suggestKeywords']);
     Route::post('campaigns/preview', [CampaignController::class, 'preview']);

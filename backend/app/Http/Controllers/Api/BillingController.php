@@ -93,7 +93,7 @@ class BillingController extends Controller
             ->latest();
 
         if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+            $query->where('status', $request->string('status')->toString());
         }
 
         return response()->json($query->paginate(50));

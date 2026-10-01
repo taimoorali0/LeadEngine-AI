@@ -15,6 +15,17 @@ INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
                                      'follow_ups.create','leads.export_assigned');
 INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
  WHERE r.key IN ('owner','super_admin');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'sales_manager' AND p.key NOT IN ('settings.manage','users.manage','leads.export_all');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'team_leader' AND p.key IN ('leads.view_all','leads.update_status','leads.assign','leads.export_team',
+                                           'notes.create','follow_ups.create');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'researcher' AND p.key IN ('leads.view_all','campaigns.manage','companies.edit','notes.create');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'qc' AND p.key IN ('leads.view_all','leads.update_status','companies.edit','notes.create');
+INSERT INTO role_permissions SELECT r.id, p.id FROM roles r, permissions p
+ WHERE r.key = 'viewer' AND p.key IN ('leads.view_all');
 
 WITH pk AS (INSERT INTO locations (level, iso_code, name_en, name_ur) VALUES ('country','PK','Pakistan','پاکستان') RETURNING id),
      pb AS (INSERT INTO locations (parent_id, level, name_en) SELECT id,'province','Punjab' FROM pk RETURNING id),

@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('search', SearchController::class);
     Route::get('locations', [LookupController::class, 'locations']);
     Route::get('industries', [LookupController::class, 'industries']);
+    Route::get('taxonomy', [LookupController::class, 'taxonomy']);
 
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/read', [NotificationController::class, 'markRead']);

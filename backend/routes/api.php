@@ -48,7 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('automations', AutomationController::class)->except('show');
 
     Route::get('billing', [BillingController::class, 'show']);
-    Route::post('billing/plan', [BillingController::class, 'changePlan']);
+    Route::post('billing/requests', [BillingController::class, 'submitRequest']);
+    Route::get('admin/billing/requests', [BillingController::class, 'requests']);
+    Route::patch('admin/billing/requests/{billingRequest}', [BillingController::class, 'review']);
+    Route::post('admin/billing/plan', [BillingController::class, 'changePlan']);
     Route::post('admin/organizations/{organization}/credits', [BillingController::class, 'grant']);
     Route::get('admin/costs', [BillingController::class, 'costs']);
 

@@ -64,7 +64,7 @@ def _variants(term: str) -> list[str]:
     lower_last = words[-1].lower()
     stem = " ".join(words[:-1]).strip()
     if lower_last in _SUFFIX_VARIANTS and stem:
-        return [f"{stem} {s}" for s in ("Company", "Supplier", "Manufacturer", "Store", "Agency")]
+        return [f"{stem} {s}" for s in ("Manufacturer", "Company", "Supplier", "Store", "Agency")]
     # Unknown free-text request: add conservative business-intent variants.
     return [f"{clean} Company", f"{clean} Supplier", f"{clean} Store"]
 

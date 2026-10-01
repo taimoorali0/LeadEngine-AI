@@ -63,7 +63,7 @@ class BillingController extends Controller
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
         $since = $request->date('since') ?? now()->startOfMonth();
-        $usage = DB::table('usage_events')->where('created_at', '>=', $since);
+        $usage = DB::table('usage_events')->where('usage_events.created_at', '>=', $since);
         $leads = Lead::withoutGlobalScopes()->where('created_at', '>=', $since);
         $total = (float) (clone $usage)->sum('cost_usd');
         $leadCount = (clone $leads)->count();

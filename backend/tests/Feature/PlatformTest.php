@@ -12,6 +12,7 @@ use App\Models\Lead;
 use App\Models\Location;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\User;
 use App\Notifications\AppNotification;
 use App\Services\AutomationEngine;
 use App\Services\Billing;
@@ -272,5 +273,18 @@ class PlatformTest extends TestCase
         $this->assertSame('failed', $c->status);
         $this->assertStringContainsString('GOOGLE_PLACES_API_KEY is not configured', $c->stats['error']);
         Notification::assertSentTo($owner, AppNotification::class, fn ($n) => $n->kind === 'campaign_failed');
+    }
+
+    public function test_super_admin_cost_dashboard_with_campaign_usage(): void
+    {
+        $owner = $this->makeUser('owner');
+        $c = Campaign::create(['organization_id' => $owner->organization_id, 'name' => 'Paper', 'company_type' => 'x',
+            'country_id' => Location::where('iso_code', 'PK')->value('id')]);
+        app(Billing::class)->charge($owner->organization_id, 'google_search', $c->id);
+        $admin = User::create(['role_id' => Role::where('key', 'super_admin')->value('id'), 'name' => 'Admin',
+            'email' => 'root@example.test', 'password' => 'secret-password']);
+
+        $this->actingAs($admin)->getJson('/api/admin/costs')->assertOk()
+            ->assertJsonPath('by_campaign.0.name', 'Paper')->assertJsonPath('by_organization.0.name', 'Acme');
     }
 }

@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   role: { key: string; name: string };
-  organization: { id: number; name: string; plan: string; credit_balance: number } | null;
+  organization: { id: number; name: string; plan: string; credit_balance: number; plan_renews_at?: string | null; subscription_status?: string; suspension_reason?: string | null } | null;
   permissions: string[];
   locale: 'en' | 'ur' | 'ar';
   two_factor_enabled: boolean;

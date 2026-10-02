@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Organization;
+use App\Models\Role;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Services\Billing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +20,10 @@ class PlatformController extends Controller
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
 
-        $q = Organization::query()->withCount(['users' => fn ($u) => $u->where('is_active', true)])->latest();
+        $ownerRole = Role::where('key', 'owner')->value('id');
+        $q = Organization::query()->withCount(['users' => fn ($u) => $u->where('is_active', true)])
+            ->with(['users' => fn ($u) => $u->where('role_id', $ownerRole)->select('id', 'organization_id', 'name', 'email')])
+            ->latest();
         if ($request->filled('q')) {
             $term = $request->string('q')->trim()->toString();
             $q->where(fn ($x) => $x->where('name', 'ilike', "%{$term}%")->orWhere('slug', 'ilike', "%{$term}%"));
@@ -29,6 +36,63 @@ class PlatformController extends Controller
         }
 
         return response()->json($q->paginate(50));
+    }
+
+    /** Super admin onboards a customer: creates the company account and its owner login. */
+    public function storeOrganization(Request $request, Billing $billing): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'plan' => ['required', Rule::in(array_keys(config('plans.plans')))],
+            'access' => ['required', Rule::in(['trial', 'paid'])],
+            'months' => 'required_if:access,paid|nullable|integer|in:1,3,6,12',
+            'trial_days' => 'nullable|integer|between:1,90',
+            'owner_name' => 'required|string|max:255',
+            'owner_email' => 'required|email|max:255|unique:users,email',
+            'owner_password' => 'required|string|min:10|max:255',
+        ]);
+
+        $org = DB::transaction(function () use ($data, $billing) {
+            $base = Str::slug($data['name']) ?: 'company';
+            $slug = $base;
+            for ($i = 2; Organization::where('slug', $slug)->exists(); $i++) {
+                $slug = "{$base}-{$i}";
+            }
+            $org = Organization::create(['name' => $data['name'], 'slug' => $slug, 'plan' => $data['plan']]);
+            if ($data['access'] === 'paid') {
+                $billing->activate($org, (int) $data['months']);
+            } else {
+                $org->forceFill(['subscription_status' => 'trialing', 'plan_renews_at' => now()->addDays((int) ($data['trial_days'] ?? 14))])->save();
+                $billing->refillCredits($org);
+            }
+            User::create([
+                'organization_id' => $org->id,
+                'role_id' => Role::where('key', 'owner')->value('id'),
+                'name' => $data['owner_name'],
+                'email' => strtolower($data['owner_email']),
+                'password' => $data['owner_password'],
+            ]);
+
+            return $org;
+        });
+
+        AuditLog::record('platform.organization_created', $org, ['plan' => $org->plan, 'access' => $data['access']]);
+
+        return response()->json($org->fresh()->loadCount('users'), 201);
+    }
+
+    /** Super admin sets a new password for a customer's user (e.g. owner forgot it). */
+    public function resetUserPassword(Request $request, User $user): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_if($user->isSuperAdmin(), 403);
+        $data = $request->validate(['password' => 'required|string|min:10|max:255']);
+        $user->forceFill(['password' => $data['password'], 'two_factor_secret' => null, 'two_factor_confirmed_at' => null, 'two_factor_recovery_codes' => null])->save();
+        $user->tokens()->delete();
+        AuditLog::record('platform.user_password_reset', $user);
+
+        return response()->json(['ok' => true]);
     }
 
     public function updateOrganization(Request $request, Organization $organization, Billing $billing): JsonResponse

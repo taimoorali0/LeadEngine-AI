@@ -97,7 +97,9 @@ export class LoginPage {
     } catch (e) {
       const err = e as HttpErrorResponse;
       this.error.set(err.status === 429 ? 'Too many attempts. Wait a minute and try again.'
-        : err.error?.errors ? (Object.values(err.error.errors)[0] as string[])[0] : 'Sign-in failed.');
+        : err.error?.errors ? (Object.values(err.error.errors)[0] as string[])[0]
+        : err.status === 0 ? 'Cannot reach the server. Check your connection.'
+        : `Sign-in failed (${err.status}${err.error?.message ? ': ' + err.error.message : ''}).`);
     } finally {
       this.busy.set(false);
     }

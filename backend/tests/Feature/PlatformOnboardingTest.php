@@ -62,4 +62,20 @@ class PlatformOnboardingTest extends TestCase
             'owner_name' => 'X', 'owner_email' => 'x@x.test', 'owner_password' => 'xxxxxxxxxxxx',
         ])->assertForbidden();
     }
+
+    public function test_payment_info_shown_to_customers_and_requests_need_evidence(): void
+    {
+        $this->actingAs($this->admin())->putJson('/api/admin/payment-info', [
+            'bank_name' => 'Meezan Bank', 'account_title' => 'Marg101', 'iban' => 'PK00MEZN0000', 'currency' => 'pkr',
+            'prices' => ['starter' => 14000, 'bogus' => 1],
+        ])->assertOk()->assertJsonPath('currency', 'PKR')->assertJsonMissingPath('prices.bogus');
+
+        $owner = $this->makeUser('owner');
+        auth()->forgetGuards();
+        $this->actingAs($owner)->getJson('/api/billing')->assertOk()
+            ->assertJsonPath('payment_info.bank_name', 'Meezan Bank')->assertJsonPath('payment_info.prices.starter', 14000);
+
+        $this->actingAs($owner)->postJson('/api/billing/requests', ['type' => 'renewal', 'months' => 1])->assertStatus(422);
+        $this->actingAs($owner)->postJson('/api/billing/requests', ['type' => 'renewal', 'months' => 1, 'transaction_reference' => 'TX123'])->assertCreated();
+    }
 }

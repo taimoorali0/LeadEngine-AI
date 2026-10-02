@@ -34,6 +34,7 @@ class BillingController extends Controller
                 ->selectRaw('kind, sum(credits) as credits, count(*) as units')->groupBy('kind')->get(),
             'transactions' => DB::table('credit_transactions')->where('organization_id', $org->id)->latest('id')->limit(30)->get(),
             'requests' => BillingRequest::where('organization_id', $org->id)->latest()->limit(20)->get(),
+            'payment_info' => PlatformController::paymentInfo(),
         ]);
     }
 
@@ -54,9 +55,10 @@ class BillingController extends Controller
             'amount' => 'nullable|numeric|min:0|max:999999999',
             'currency' => 'nullable|string|size:3',
             'payment_method' => 'nullable|string|max:80',
-            'transaction_reference' => 'nullable|string|max:160',
+            // Paid requests need evidence: a receipt/screenshot or the bank/wallet transaction ID.
+            'transaction_reference' => 'nullable|required_without:payment_proof|string|max:160',
             'payment_date' => 'nullable|date',
-            'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:8192',
+            'payment_proof' => 'nullable|required_without:transaction_reference|file|mimes:jpg,jpeg,png,pdf|max:8192',
             'message' => 'nullable|string|max:2000',
             'months' => 'nullable|integer|in:1,3,6,12',
         ]);

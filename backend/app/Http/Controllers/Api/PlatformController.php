@@ -82,6 +82,46 @@ class PlatformController extends Controller
         return response()->json($org->fresh()->loadCount('users'), 201);
     }
 
+    public const PAYMENT_FIELDS = ['bank_name', 'account_title', 'account_number', 'iban', 'wallets', 'instructions', 'currency', 'prices'];
+
+    /** Where customers send payment, and plan prices in the local currency. Shown on every customer's billing page. */
+    public static function paymentInfo(): array
+    {
+        $stored = DB::table('platform_settings')->where('key', 'payment_info')->value('value');
+        $info = $stored ? json_decode($stored, true) : [];
+
+        return array_merge(array_fill_keys(self::PAYMENT_FIELDS, null), ['currency' => 'PKR', 'prices' => []], $info ?: []);
+    }
+
+    public function showPaymentInfo(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+
+        return response()->json(self::paymentInfo());
+    }
+
+    public function updatePaymentInfo(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        $data = $request->validate([
+            'bank_name' => 'nullable|string|max:120',
+            'account_title' => 'nullable|string|max:120',
+            'account_number' => 'nullable|string|max:60',
+            'iban' => 'nullable|string|max:60',
+            'wallets' => 'nullable|string|max:500',
+            'instructions' => 'nullable|string|max:2000',
+            'currency' => 'required|string|size:3',
+            'prices' => 'nullable|array',
+            'prices.*' => 'nullable|numeric|min:0|max:999999999',
+        ]);
+        $data['currency'] = strtoupper($data['currency']);
+        $data['prices'] = array_intersect_key($data['prices'] ?? [], config('plans.plans'));
+        DB::table('platform_settings')->updateOrInsert(['key' => 'payment_info'], ['value' => json_encode($data), 'updated_at' => now(), 'created_at' => now()]);
+        AuditLog::record('platform.payment_info_updated', null, []);
+
+        return response()->json(self::paymentInfo());
+    }
+
     /** Super admin sets a new password for a customer's user (e.g. owner forgot it). */
     public function resetUserPassword(Request $request, User $user): JsonResponse
     {

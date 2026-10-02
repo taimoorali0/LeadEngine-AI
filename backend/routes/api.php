@@ -60,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin/organizations/{organization}/credits', [BillingController::class, 'grant']);
     Route::get('admin/costs', [BillingController::class, 'costs']);
     Route::get('admin/organizations', [PlatformController::class, 'organizations']);
+    Route::get('admin/payment-info', [PlatformController::class, 'showPaymentInfo']);
+    Route::put('admin/payment-info', [PlatformController::class, 'updatePaymentInfo']);
     Route::post('admin/organizations', [PlatformController::class, 'storeOrganization']);
     Route::post('admin/users/{user}/password', [PlatformController::class, 'resetUserPassword']);
     Route::patch('admin/organizations/{organization}', [PlatformController::class, 'updateOrganization']);

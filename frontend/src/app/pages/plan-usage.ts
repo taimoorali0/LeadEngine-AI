@@ -73,24 +73,41 @@ import { AuthService } from '../core/auth';
             <form class="card space-y-3" (ngSubmit)="submit()">
               <div class="flex items-center justify-between"><h2 class="section-title">{{ label(type) }}</h2><button type="button" class="text-slate-400" (click)="showForm.set(false)">×</button></div>
               @if (type === 'upgrade') {
-                <div><label class="label">{{ 'Requested plan' | t }}</label><select class="input" [(ngModel)]="requestedPlan" name="plan">
+                <div><label class="label">{{ 'Requested plan' | t }}</label><select class="input" [(ngModel)]="requestedPlan" name="plan" (ngModelChange)="fillAmount()">
                   @for (p of entries(b.plans); track p.key) { <option [value]="p.key">{{ p.value.name }}</option> }
                 </select></div>
               }
               @if (type !== 'credits') {
-                <div><label class="label">{{ 'Billing period' | t }}</label><select class="input" [(ngModel)]="months" name="months">
+                <div><label class="label">{{ 'Billing period' | t }}</label><select class="input" [(ngModel)]="months" name="months" (ngModelChange)="fillAmount()">
                   @for (m of [1, 3, 6, 12]; track m) { <option [ngValue]="m">{{ (m === 1 ? '1 month' : '{n} months') | t: { n: m } }}</option> }
                 </select></div>
               }
               @if (type === 'credits') {
                 <div><label class="label">{{ 'Credits requested' | t }}</label><input class="input" type="number" min="1" [(ngModel)]="requestedCredits" name="credits" /></div>
               }
+              @if (b.payment_info; as pi) {
+                @if (pi.bank_name || pi.account_number || pi.iban || pi.wallets || pi.instructions) {
+                  <div class="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-slate-700">
+                    <div class="mb-2 font-semibold text-violet-800">{{ 'Send payment to' | t }}</div>
+                    @if (pi.bank_name) { <div><span class="text-slate-500">{{ 'Bank' | t }}:</span> {{ pi.bank_name }}</div> }
+                    @if (pi.account_title) { <div><span class="text-slate-500">{{ 'Account title' | t }}:</span> {{ pi.account_title }}</div> }
+                    @if (pi.account_number) { <div><span class="text-slate-500">{{ 'Account number' | t }}:</span> <span class="font-mono">{{ pi.account_number }}</span></div> }
+                    @if (pi.iban) { <div><span class="text-slate-500">IBAN:</span> <span class="font-mono">{{ pi.iban }}</span></div> }
+                    @if (pi.wallets) { <div class="mt-1 whitespace-pre-line">{{ pi.wallets }}</div> }
+                    @if (pi.instructions) { <div class="mt-2 whitespace-pre-line text-xs text-slate-500">{{ pi.instructions }}</div> }
+                  </div>
+                }
+              }
               <div class="grid grid-cols-2 gap-3">
                 <div><label class="label">{{ 'Amount' | t }}</label><input class="input" type="number" step="0.01" [(ngModel)]="amount" name="amount" /></div>
                 <div><label class="label">{{ 'Currency' | t }}</label><input class="input" [(ngModel)]="currency" name="currency" maxlength="3" /></div>
               </div>
               <div><label class="label">{{ 'Payment method' | t }}</label><input class="input" [(ngModel)]="paymentMethod" name="method" placeholder="Bank transfer" /></div>
-              <div><label class="label">{{ 'Transaction reference' | t }}</label><input class="input" [(ngModel)]="reference" name="reference" /></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">{{ 'Transaction reference' | t }}</label><input class="input" [(ngModel)]="reference" name="reference" /></div>
+                <div><label class="label">{{ 'Payment date' | t }}</label><input class="input" type="date" [(ngModel)]="paymentDate" name="paymentDate" /></div>
+              </div>
+              <p class="text-xs text-slate-500">{{ 'Attach a receipt/screenshot or enter the transaction ID — at least one is required.' | t }}</p>
               <div><label class="label">{{ 'Payment proof' | t }}</label><input class="input" type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="proof = $any($event.target).files?.[0] ?? null" /></div>
               <div><label class="label">{{ 'Message' | t }}</label><textarea class="input min-h-24" [(ngModel)]="message" name="message"></textarea></div>
               @if (notice()) { <p class="text-sm" [class]="noticeOk() ? 'text-emerald-700' : 'text-rose-700'">{{ notice() }}</p> }
@@ -103,7 +120,8 @@ import { AuthService } from '../core/auth';
             <div class="mt-3 space-y-2">
               @for (r of b.requests; track r.id) {
                 <div class="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                  <div><div class="text-sm font-semibold">{{ label(r.type) }}</div><div class="text-xs text-slate-500">{{ r.created_at | date:'mediumDate' }}</div></div>
+                  <div><div class="text-sm font-semibold">{{ label(r.type) }}</div><div class="text-xs text-slate-500">{{ r.created_at | date:'mediumDate' }}</div>
+                    @if (r.admin_note) { <div class="mt-1 text-xs text-amber-700">{{ r.admin_note }}</div> }</div>
                   <span class="badge" [class]="statusClass(r.status)">{{ label(r.status) }}</span>
                 </div>
               } @empty { <p class="text-sm text-slate-500">{{ 'No requests submitted.' | t }}</p> }
@@ -132,6 +150,7 @@ export class PlanUsagePage implements OnInit {
   reference = '';
   message = '';
   proof: File | null = null;
+  paymentDate = new Date().toISOString().slice(0, 10);
 
   ngOnInit() { this.reload(); }
   reload() { this.api.billing().subscribe(x => this.b.set(x)); }
@@ -141,6 +160,16 @@ export class PlanUsagePage implements OnInit {
   start(type: string, plan?: string) {
     this.type = type; if (plan) this.requestedPlan = plan;
     this.notice.set(''); this.showForm.set(true);
+    this.currency = this.b()?.payment_info?.currency ?? 'PKR';
+    this.fillAmount();
+  }
+
+  /** Suggest the amount from the platform's local price list (plan price × months). */
+  fillAmount() {
+    const prices = this.b()?.payment_info?.prices ?? {};
+    const plan = this.type === 'upgrade' ? this.requestedPlan : this.b()?.plan_key;
+    const price = Number(prices[plan]);
+    if (this.type !== 'credits' && price > 0) this.amount = price * this.months;
   }
 
   submit() {
@@ -153,12 +182,20 @@ export class PlanUsagePage implements OnInit {
     fd.append('currency', this.currency || 'PKR');
     if (this.paymentMethod) fd.append('payment_method', this.paymentMethod);
     if (this.reference) fd.append('transaction_reference', this.reference);
+    if (this.paymentDate) fd.append('payment_date', this.paymentDate);
     if (this.message) fd.append('message', this.message);
+    if (!this.proof && !this.reference.trim()) { this.noticeOk.set(false); this.notice.set('Attach payment proof or enter the transaction reference.'); return; }
     if (this.proof) fd.append('payment_proof', this.proof);
     this.busy.set(true); this.notice.set('');
     this.api.submitBillingRequest(fd).subscribe({
-      next: () => { this.busy.set(false); this.noticeOk.set(true); this.notice.set('Request submitted for Super Admin review.'); this.reload(); },
-      error: e => { this.busy.set(false); this.noticeOk.set(false); this.notice.set(e.error?.message ?? 'Could not submit request.'); },
+      next: () => {
+        this.busy.set(false); this.noticeOk.set(true); this.notice.set('Request submitted for Super Admin review.');
+        this.reference = ''; this.message = ''; this.proof = null; this.reload();
+      },
+      error: e => {
+        this.busy.set(false); this.noticeOk.set(false);
+        this.notice.set(e.error?.errors ? (Object.values(e.error.errors)[0] as string[])[0] : e.error?.message ?? 'Could not submit request.');
+      },
     });
   }
 

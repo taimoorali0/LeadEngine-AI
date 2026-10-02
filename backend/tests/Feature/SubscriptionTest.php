@@ -31,7 +31,7 @@ class SubscriptionTest extends TestCase
         app(Billing::class)->activate($org, 1);
         $end = $org->fresh()->plan_renews_at;
 
-        $req = $this->actingAs($owner)->postJson('/api/billing/requests', ['type' => 'renewal', 'months' => 12])->assertCreated();
+        $req = $this->actingAs($owner)->postJson('/api/billing/requests', ['type' => 'renewal', 'months' => 12, 'transaction_reference' => 'TX-1'])->assertCreated();
         $this->actingAs($this->admin())->patchJson("/api/admin/billing/requests/{$req->json('id')}", ['status' => 'approved'])->assertOk();
 
         $org->refresh();

@@ -80,6 +80,8 @@ export class Api {
   billingProof(id: number) { return this.http.get(`/api/admin/billing/requests/${id}/proof`, { responseType: 'blob' }); }
   adminCosts() { return this.http.get<any>('/api/admin/costs'); }
   adminOrganizations(p: Params = {}) { return this.http.get<any>('/api/admin/organizations', { params: params(p) }); }
+  paymentInfo() { return this.http.get<any>('/api/admin/payment-info'); }
+  updatePaymentInfo(body: unknown) { return this.http.put<any>('/api/admin/payment-info', body); }
   createAdminOrganization(body: unknown) { return this.http.post<any>('/api/admin/organizations', body); }
   resetAdminUserPassword(id: number, password: string) { return this.http.post<any>(`/api/admin/users/${id}/password`, { password }); }
   updateAdminOrganization(id: number, body: unknown) { return this.http.patch<any>(`/api/admin/organizations/${id}`, body); }

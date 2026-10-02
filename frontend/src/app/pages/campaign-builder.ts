@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -196,7 +196,7 @@ import { Keyword, Location } from '../core/models';
             }
 
             <button class="btn-ghost mt-4 w-full" type="button" (click)="makePreview()" [disabled]="!canPreview() || busy()">{{ 'Preview Campaign' | t }}</button>
-            <button class="btn-primary mt-2 w-full" type="button" (click)="save(true)" [disabled]="!preview() || busy()">{{ busy() ? ('Starting…' | t) : ('Start Campaign' | t) }}</button>
+            <button class="btn-primary mt-2 w-full" type="button" (click)="save(true)" [disabled]="!canPreview() || busy()">{{ busy() ? ('Starting…' | t) : ('Start Campaign' | t) }}</button>
             <button class="mt-2 w-full py-2 text-sm font-semibold text-slate-500 hover:text-slate-800" type="button" (click)="save(false)" [disabled]="!canPreview() || busy()">{{ 'Save as Draft' | t }}</button>
           </section>
         </aside>
@@ -241,12 +241,13 @@ export class CampaignBuilderPage {
     { key: 'deep', label: 'Deep', description: 'Expands city areas for maximum local coverage.' },
   ];
 
-  protected canPreview = computed(() => !!this.companyType.trim() && !!this.countryId);
-  protected autoName = computed(() => {
+  // Plain methods: these read ngModel fields (not signals), so computed() would never update.
+  protected canPreview() { return !!this.companyType.trim() && !!this.countryId; }
+  protected autoName() {
     const city = this.cities().find(x => x.id === this.cityId)?.name_en;
     const country = this.countries().find(x => x.id === this.countryId)?.name_en;
     return [this.companyType || 'Campaign', city || country].filter(Boolean).join(' — ');
-  });
+  }
 
   chooseBusinessType(name: string) { this.companyType = name; this.preview.set(null); this.suggest(); }
 

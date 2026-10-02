@@ -178,6 +178,7 @@ export class Shell {
     ] },
     { title: 'Prospecting', items: [
       { path: '/campaigns', label: 'Campaigns', icon: '⌕' },
+      { path: '/import', label: 'Import Companies', icon: '⇪', perm: 'campaigns.manage' },
       { path: '/automation', label: 'Automation', icon: '⌁', perm: 'automation.manage' },
       { path: '/reports', label: 'Reports', icon: '◫', perm: 'reports.view' },
     ] },

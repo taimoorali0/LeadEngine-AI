@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\AutomationController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\NotificationController;
@@ -67,6 +69,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('companies', CompanyController::class)->except('store');
     Route::post('companies/{company}/analyze', [CompanyController::class, 'analyze']);
+    Route::post('companies/{company}/contacts', [ContactController::class, 'store']);
+    Route::patch('contacts/{contact}', [ContactController::class, 'update']);
+    Route::delete('contacts/{contact}', [ContactController::class, 'destroy']);
+    Route::post('imports/preview', [ImportController::class, 'preview']);
+    Route::post('imports', [ImportController::class, 'store']);
 
     Route::get('leads/board', [LeadController::class, 'board']);
     Route::get('leads/export', [LeadController::class, 'export']);

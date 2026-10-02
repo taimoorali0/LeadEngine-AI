@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Activity, AppNotification, AutomationRule, Campaign, Company, FollowUp, Industry, Keyword, Lead, Location, Page } from './models';
+import { Activity, AppNotification, AutomationRule, Contact, ImportPreview, Campaign, Company, FollowUp, Industry, Keyword, Lead, Location, Page } from './models';
 
 type Params = Record<string, string | number | boolean | null | undefined>;
 
@@ -81,6 +81,18 @@ export class Api {
   adminCosts() { return this.http.get<any>('/api/admin/costs'); }
   adminOrganizations(p: Params = {}) { return this.http.get<any>('/api/admin/organizations', { params: params(p) }); }
   updateAdminOrganization(id: number, body: unknown) { return this.http.patch<any>(`/api/admin/organizations/${id}`, body); }
+
+  addContact(companyId: number, body: Partial<Contact>) { return this.http.post<Contact>(`/api/companies/${companyId}/contacts`, body); }
+  updateContact(id: number, body: Partial<Contact>) { return this.http.patch<Contact>(`/api/contacts/${id}`, body); }
+  deleteContact(id: number) { return this.http.delete(`/api/contacts/${id}`); }
+  importPreview(file: File) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<ImportPreview>('/api/imports/preview', fd);
+  }
+  startImport(body: { upload_id: string; name: string; country_id: number; industry_id?: number | null; mapping: Record<string, number | null> }) {
+    return this.http.post<Campaign>('/api/imports', body);
+  }
 
   companies(p: Params) { return this.http.get<Page<Company>>('/api/companies', { params: params(p) }); }
   company(id: number) { return this.http.get<Company>(`/api/companies/${id}`); }

@@ -20,5 +20,9 @@ final class DiscoveredBusiness
         public readonly ?string $businessStatus = null,
         public readonly ?string $category = null,
         public readonly array $raw = [],
+        /** e.g. ['linkedin' => 'https://linkedin.com/company/...'] */
+        public readonly array $socialLinks = [],
+        /** Known location (e.g. a CSV "city" column matched to the location tree). */
+        public readonly ?int $locationId = null,
     ) {}
 }

@@ -15,6 +15,7 @@ export const routes: Routes = [
       { path: 'dashboard', ...page(() => import('./pages/dashboard').then(m => m.DashboardPage)) },
       { path: 'calendar', ...page(() => import('./pages/calendar').then(m => m.CalendarPage)) },
       { path: 'campaigns', ...page(() => import('./pages/campaigns').then(m => m.CampaignsPage)) },
+      { path: 'import', ...page(() => import('./pages/import').then(m => m.ImportPage)) },
       { path: 'campaigns/new', ...page(() => import('./pages/campaign-builder').then(m => m.CampaignBuilderPage)) },
       { path: 'campaigns/:id', ...page(() => import('./pages/campaign-detail').then(m => m.CampaignDetailPage)) },
       { path: 'leads', ...page(() => import('./pages/leads').then(m => m.LeadsPage)) },

@@ -61,6 +61,7 @@ export interface Company {
   phones?: Phone[];
   emails?: Email[];
   sources?: { id: number; source: string; keyword: string | null; discovered_at: string }[];
+  contacts?: Contact[];
   leads?: Lead[];
 }
 
@@ -117,4 +118,27 @@ export interface AutomationRule {
   enabled: boolean;
   priority: number;
   runs?: number;
+}
+
+export interface Contact {
+  id: number;
+  company_id: number;
+  name: string;
+  title: string | null;
+  phone: string | null;
+  email: string | null;
+  linkedin_url: string | null;
+  notes: string | null;
+  source: string;
+  created_by: number | null;
+}
+
+export interface ImportPreview {
+  upload_id: string;
+  filename: string;
+  headers: string[];
+  sample: string[][];
+  row_count: number;
+  mapping: Record<string, number>;
+  fields: string[];
 }

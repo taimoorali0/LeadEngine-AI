@@ -1,15 +1,18 @@
 import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { DatePipe, KeyValuePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import { apiError } from './account';
 import { Api } from '../core/api';
 import { AuthService } from '../core/auth';
 import { TPipe } from '../core/i18n/i18n';
-import { Activity, Company, label, qualityClass } from '../core/models';
+import { Activity, Company, Contact, label, qualityClass } from '../core/models';
 
 /** Company 360° profile (spec §25). */
 @Component({
   selector: 'app-company-detail',
-  imports: [TPipe, DatePipe, KeyValuePipe, RouterLink],
+  imports: [TPipe, DatePipe, KeyValuePipe, RouterLink, FormsModule],
   template: `
     @if (c(); as c) {
       <div class="mb-5">
@@ -59,6 +62,55 @@ import { Activity, Company, label, qualityClass } from '../core/models';
         </section>
       </div>
       <section class="card mt-5">
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+          <h2 class="me-auto font-semibold">{{ 'People' | t }} <span class="text-sm font-normal text-slate-500">({{ c.contacts?.length ?? 0 }})</span></h2>
+          @if (c.social_links['linkedin']) {
+            <a class="btn-ghost" [href]="c.social_links['linkedin']" target="_blank" rel="noopener">in · {{ 'Open LinkedIn page' | t }}</a>
+          }
+          <a class="btn-ghost" [href]="employeesUrl(c)" target="_blank" rel="noopener">in · {{ 'Find employees on LinkedIn' | t }}</a>
+          @if (auth.can('notes.create')) { <button class="btn-primary" (click)="newContact()">+ {{ 'Add person' | t }}</button> }
+        </div>
+        <p class="mb-3 text-xs text-slate-500">{{ 'LinkedIn opens in your own browser and account. Add the people you find here so the whole team can see them.' | t }}</p>
+
+        @if (form(); as f) {
+          <form class="mb-4 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-3" (ngSubmit)="saveContact()">
+            <input class="input" name="cn" [placeholder]="'Full name' | t" [(ngModel)]="f.name" required />
+            <input class="input" name="ct" [placeholder]="'Job title' | t" [(ngModel)]="f.title" />
+            <input class="input" name="cl" type="url" dir="ltr" [placeholder]="'LinkedIn profile link' | t" [(ngModel)]="f.linkedin_url" />
+            <input class="input" name="ce" type="email" dir="ltr" [placeholder]="'Email' | t" [(ngModel)]="f.email" />
+            <input class="input" name="cp" dir="ltr" [placeholder]="'Phone' | t" [(ngModel)]="f.phone" />
+            <input class="input" name="cno" [placeholder]="'Notes' | t" [(ngModel)]="f.notes" />
+            @if (contactError()) { <p class="text-sm text-rose-600 sm:col-span-2 lg:col-span-3">{{ contactError() | t }}</p> }
+            <div class="flex gap-2 sm:col-span-2 lg:col-span-3">
+              <button class="btn-primary" [disabled]="!f.name?.trim()">{{ (f.id ? 'Save changes' : 'Add person') | t }}</button>
+              <button type="button" class="btn-ghost" (click)="form.set(null)">{{ 'Cancel' | t }}</button>
+            </div>
+          </form>
+        }
+
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          @for (p of c.contacts; track p.id) {
+            <div class="rounded-xl border border-slate-200 p-4 text-sm">
+              <div class="flex items-start justify-between gap-2">
+                <div><div class="font-semibold text-slate-900">{{ p.name }}</div><div class="text-slate-500">{{ p.title || '—' }}</div></div>
+                <span class="badge bg-slate-100 text-slate-600">{{ p.source === 'csv' ? 'CSV' : ('Manual' | t) }}</span>
+              </div>
+              <div class="mt-2 space-y-1" dir="ltr">
+                @if (p.email) { <div>✉️ <a class="text-indigo-700" [href]="'mailto:' + p.email">{{ p.email }}</a></div> }
+                @if (p.phone) { <div>📞 <a class="text-indigo-700" [href]="'tel:' + p.phone">{{ p.phone }}</a></div> }
+              </div>
+              <div class="mt-3 flex flex-wrap gap-3 text-xs">
+                @if (p.linkedin_url) { <a class="font-semibold text-indigo-700" [href]="p.linkedin_url" target="_blank" rel="noopener">in · {{ 'LinkedIn profile' | t }}</a> }
+                @else { <a class="text-indigo-700" [href]="personSearchUrl(p.name, c.name_en)" target="_blank" rel="noopener">in · {{ 'Search on LinkedIn' | t }}</a> }
+                @if (auth.can('notes.create')) { <button class="text-slate-600" (click)="editContact(p)">{{ 'Edit' | t }}</button> }
+                @if (p.created_by === auth.user()?.id || auth.can('companies.edit')) { <button class="text-rose-600" (click)="deleteContact(p)">{{ 'Delete' | t }}</button> }
+              </div>
+            </div>
+          } @empty { <p class="text-sm text-slate-500">{{ 'No people added yet.' | t }}</p> }
+        </div>
+      </section>
+
+      <section class="card mt-5">
         <h2 class="mb-4 font-semibold">{{ 'Activity timeline' | t }}</h2>
         <ol class="space-y-2 text-sm">
           @for (e of timeline(); track $index) {
@@ -76,12 +128,46 @@ export class CompanyDetailPage implements OnInit {
   protected auth = inject(AuthService);
   protected queued = signal(false);
 
+  protected form = signal<Partial<Contact> | null>(null);
+  protected contactError = signal('');
+
+  /** LinkedIn's own "People" tab when the company page is known; otherwise a people search. */
+  employeesUrl(c: Company): string {
+    const slug = /linkedin\.com\/company\/([^/?#]+)/i.exec(c.social_links?.['linkedin'] ?? '')?.[1];
+    if (slug) return `https://www.linkedin.com/company/${slug}/people/`;
+    return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(c.name_en)}`;
+  }
+
+  personSearchUrl(name: string, company: string): string {
+    return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + ' ' + company)}`;
+  }
+
+  newContact() { this.contactError.set(''); this.form.set({ name: '', title: '', linkedin_url: '', email: '', phone: '', notes: '' }); }
+  editContact(p: Contact) { this.contactError.set(''); this.form.set({ ...p }); }
+
+  saveContact() {
+    const f = this.form();
+    if (!f) return;
+    const body = { name: f.name, title: f.title || null, linkedin_url: f.linkedin_url || null, email: f.email || null, phone: f.phone || null, notes: f.notes || null };
+    const req = f.id ? this.api.updateContact(f.id, body) : this.api.addContact(+this.id(), body);
+    req.subscribe({
+      next: () => { this.form.set(null); this.reload(); },
+      error: (e: HttpErrorResponse) => this.contactError.set(apiError(e)),
+    });
+  }
+
+  deleteContact(p: Contact) {
+    if (confirm(`Delete ${p.name}?`)) this.api.deleteContact(p.id).subscribe(() => this.reload());
+  }
+
   reanalyze() { this.api.analyzeCompany(+this.id()).subscribe(() => this.queued.set(true)); }
   protected timeline = signal<{ at: string; text: string }[]>([]);
   protected label = label;
   protected qualityClass = qualityClass;
 
-  ngOnInit() {
+  ngOnInit() { this.reload(); }
+
+  reload() {
     this.api.company(+this.id()).subscribe(c => {
       this.c.set(c);
       const events = [

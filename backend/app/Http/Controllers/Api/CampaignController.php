@@ -148,6 +148,7 @@ class CampaignController extends Controller
         abort_if(! $billing->canRunCampaign($org, $campaign), 422, 'Your plan’s limit of running campaigns has been reached.');
         abort_if($org->fresh()->credit_balance < 1, 422, 'Not enough credits. Top up or upgrade your plan.');
         abort_if(in_array($campaign->status, ['queued', 'running'], true), 409, 'Campaign is already running.');
+        abort_if($campaign->filter('source') === 'csv', 422, 'Imported lists cannot be re-run. Import the file again instead.');
         abort_if(! $campaign->keywords()->where('enabled', true)->exists(), 422, 'Campaign has no enabled keywords.');
 
         $previous = $campaign->status;

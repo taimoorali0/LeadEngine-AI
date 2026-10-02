@@ -145,11 +145,16 @@ class CompanyIngestor
             'website_domain' => Company::domainOf($b->website),
             'google_place_id' => $b->source === 'google_places' ? $b->externalRef : null,
             'business_status' => $b->businessStatus,
+            'location_id' => $b->locationId,
         ];
         foreach ($values as $key => $value) {
             if ($c->{$key} === null && $value !== null) {
                 $c->{$key} = $value;
             }
+        }
+        if ($b->socialLinks) {
+            // Existing links (possibly corrected by users) win.
+            $c->social_links = array_merge($b->socialLinks, $c->social_links ?? []);
         }
         // Reputation figures are refreshed on every sighting.
         $c->rating = $b->rating ?? $c->rating;

@@ -40,6 +40,18 @@ import { Lead, OUTCOMES, PIPELINE, label, qualityClass } from '../core/models';
             @for (p of l.company.phones; track p.id) { <div>📞 <a class="text-indigo-700" [href]="'tel:' + (p.normalized ?? p.original)">{{ p.normalized ?? p.original }}</a></div> }
             @for (e of l.company.emails; track e.id) { <div>✉️ <a class="text-indigo-700" [href]="'mailto:' + e.email">{{ e.email }}</a> <span class="text-xs text-slate-500">{{ e.type }} · {{ e.status }}</span></div> }
             @if (l.company.website) { <div>🌐 <a class="text-indigo-700" [href]="l.company.website" target="_blank" rel="noopener">{{ l.company.website }}</a></div> }
+            @if (l.company.social_links['linkedin']) { <div>in · <a class="text-indigo-700" [href]="l.company.social_links['linkedin']" target="_blank" rel="noopener">{{ 'LinkedIn page' | t }}</a></div> }
+            @if (l.company.contacts?.length) {
+              <div class="mt-3 border-t border-slate-100 pt-3"><span class="label">{{ 'People' | t }}</span>
+                @for (p of l.company.contacts; track p.id) {
+                  <div class="py-1"><b>{{ p.name }}</b>@if (p.title) { <span class="text-slate-500"> · {{ p.title }}</span> }
+                    @if (p.phone) { <a class="ms-2 text-indigo-700" [href]="'tel:' + p.phone" dir="ltr">📞 {{ p.phone }}</a> }
+                    @if (p.linkedin_url) { <a class="ms-2 text-indigo-700" [href]="p.linkedin_url" target="_blank" rel="noopener">in</a> }
+                  </div>
+                }
+              </div>
+            }
+            <a class="mt-2 inline-block text-xs text-indigo-700" [routerLink]="['/companies', l.company.id]">{{ 'Manage people →' | t }}</a>
           </section>
           @if (auth.can('follow_ups.create')) {
             <section class="card space-y-3">

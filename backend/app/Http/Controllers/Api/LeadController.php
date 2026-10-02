@@ -67,7 +67,7 @@ class LeadController extends Controller
     {
         $this->ensureVisible($request->user(), $lead);
 
-        return response()->json($lead->load('company.phones', 'company.emails', 'campaign:id,name', 'assignee:id,name',
+        return response()->json($lead->load('company.phones', 'company.emails', 'company.contacts', 'campaign:id,name', 'assignee:id,name',
             'activities.user:id,name', 'followUps'));
     }
 
@@ -109,7 +109,7 @@ class LeadController extends Controller
     public function brief(Request $request, Lead $lead): JsonResponse
     {
         $this->ensureVisible($request->user(), $lead);
-        $lead->load('company.industry', 'company.location.parent', 'company.phones', 'company.emails', 'assignee:id,name', 'campaign:id,name');
+        $lead->load('company.industry', 'company.location.parent', 'company.phones', 'company.emails', 'company.contacts', 'assignee:id,name', 'campaign:id,name');
         $c = $lead->company;
         $last = $lead->activities()->whereIn('type', ['call', 'email', 'meeting', 'whatsapp', 'note'])->with('user:id,name')->limit(5)->get();
 
@@ -125,6 +125,8 @@ class LeadController extends Controller
             'possible_needs' => $c->possible_needs,
             'phones' => $c->phones->pluck('normalized')->filter()->values(),
             'emails' => $c->emails->pluck('email'),
+            'linkedin' => $c->social_links['linkedin'] ?? null,
+            'contacts' => $c->contacts->map(fn ($p) => $p->only(['name', 'title', 'phone', 'email', 'linkedin_url'])),
             'rating' => $c->rating ? "{$c->rating} ({$c->review_count} reviews)" : null,
             'score' => $lead->score,
             'quality' => $lead->quality,

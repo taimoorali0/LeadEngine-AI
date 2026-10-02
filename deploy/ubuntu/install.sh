@@ -143,12 +143,27 @@ npm ci --no-audit --no-fund --loglevel=error
 npx ng build --configuration production >/dev/null
 
 # ---------------------------------------------------------------- nginx
-log "Configuring nginx"
+write_nginx() {
+CERT=/etc/letsencrypt/live/$DOMAIN
+SSL=""
+if [ "$DOMAIN" != _ ] && [ -f "$CERT/fullchain.pem" ]; then
+  # HTTPS on 443. Plain-http visitors are redirected, except requests that already came in over
+  # https through a proxy (e.g. Cloudflare Tunnel sends X-Forwarded-Proto) - redirecting those loops.
+  SSL="    listen 443 ssl;
+    ssl_certificate $CERT/fullchain.pem;
+    ssl_certificate_key $CERT/privkey.pem;
+    set \$redir 0;
+    if (\$scheme = http) { set \$redir 1; }
+    if (\$http_x_forwarded_proto = https) { set \$redir 0; }
+    if (\$redir) { return 301 https://\$host\$request_uri; }"
+fi
 cat > /etc/nginx/sites-available/leadengine <<NGINX
 map \$http_upgrade \$connection_upgrade { default upgrade; '' close; }
+map \$http_x_forwarded_proto \$fcgi_https { https on; default \$https; }
 server {
     listen 80;
     server_name $DOMAIN;
+$SSL
     root $APP_DIR/frontend/dist/frontend/browser;
     client_max_body_size 20m;
 
@@ -157,6 +172,7 @@ server {
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $APP_DIR/backend/public/index.php;
         fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param HTTPS \$fcgi_https;
         fastcgi_read_timeout 120s;
     }
     location /app/ {
@@ -170,6 +186,9 @@ server {
     location / { try_files \$uri \$uri/ /index.html; }
 }
 NGINX
+}
+log "Configuring nginx"
+write_nginx
 ln -sf /etc/nginx/sites-available/leadengine /etc/nginx/sites-enabled/leadengine
 # Never touch other sites. The stock "Welcome to nginx" default is only disabled on an
 # otherwise empty server installed without a domain (it would shadow LeadEngine on the IP).
@@ -228,7 +247,11 @@ fi
 if [ -n "${SSL_EMAIL:-}" ] && [ "$DOMAIN" != _ ]; then
   log "Requesting a Let's Encrypt certificate for $DOMAIN"
   apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
-  certbot --nginx -d "$DOMAIN" -m "$SSL_EMAIL" --agree-tos --non-interactive --redirect
+  if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    # certonly: get the certificate without letting certbot rewrite our nginx file.
+    certbot certonly --nginx -d "$DOMAIN" -m "$SSL_EMAIL" --agree-tos --non-interactive
+  fi
+  write_nginx && nginx -t -q && { systemctl reload nginx 2>/dev/null || service nginx reload >/dev/null; }
   sed -i "s|^APP_URL=.*|APP_URL=https://$DOMAIN|" "$ENV_FILE"
   (cd "$APP_DIR/backend" && php artisan config:cache -q)
 fi

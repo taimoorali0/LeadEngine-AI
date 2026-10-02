@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Billing;
 use App\Services\TwoFactor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -140,6 +141,7 @@ class AuthController extends Controller
     private function profile(User $user): array
     {
         return $user->load('role:id,key,name', 'organization:id,name,slug,plan,credit_balance,plan_renews_at,subscription_status,suspension_reason')->toArray()
-            + ['permissions' => $user->isSuperAdmin() ? ['*'] : $user->permissionKeys()];
+            + ['permissions' => $user->isSuperAdmin() ? ['*'] : $user->permissionKeys(),
+                'credit_allowance' => $user->organization ? app(Billing::class)->plan($user->organization)['monthly_credits'] : null];
     }
 }

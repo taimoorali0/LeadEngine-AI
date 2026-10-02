@@ -14,7 +14,7 @@ function params(p: Params = {}): HttpParams {
 export class Api {
   private http = inject(HttpClient);
 
-  dashboard() { return this.http.get<Record<string, any>>('/api/dashboard'); }
+  dashboard() { return this.http.get<any>('/api/dashboard'); }
   search(q: string) { return this.http.get<{ companies: (Company & { top_score: number | null })[]; leads: Lead[] }>('/api/search', { params: params({ q }) }); }
 
   locations(parentId?: number) { return this.http.get<Location[]>('/api/locations', { params: params({ parent_id: parentId }) }); }

@@ -7,6 +7,7 @@ export interface User {
   permissions: string[];
   locale: 'en' | 'ur' | 'ar';
   two_factor_enabled: boolean;
+  credit_allowance?: number | null;
 }
 
 export interface Location { id: number; parent_id: number | null; level: string; iso_code: string | null; name_en: string; name_ar?: string; parent?: Location | null }

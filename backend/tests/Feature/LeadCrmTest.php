@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\Lead;
+use App\Models\Location;
 use App\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -91,8 +92,16 @@ class LeadCrmTest extends TestCase
         $owner = $this->makeUser('owner');
         $this->lead($owner->organization, 'ABC Paper Mills', ['score' => 91]);
 
-        $this->actingAs($owner)->getJson('/api/dashboard')->assertOk()
-            ->assertJsonPath('total_companies', 1)->assertJsonPath('high_quality', 1);
+        $lead = Lead::first();
+        $lead->company->update(['location_id' => Location::where('name_en', 'Lahore')->value('id')]);
+        $lead->followUps()->create(['user_id' => $owner->id, 'due_at' => now()->subHour(), 'type' => 'call']);
+        $lead->followUps()->create(['user_id' => $owner->id, 'due_at' => now()->addDays(2), 'type' => 'meeting']);
+        $d = $this->actingAs($owner)->getJson('/api/dashboard')->assertOk()
+            ->assertJsonPath('total_companies', 1)->assertJsonPath('high_quality', 1)->assertJsonPath('total_leads', 1)
+            ->assertJsonPath('top_locations.0.name', 'Lahore')->assertJsonPath('follow_ups.overdue', 1)
+            ->assertJsonPath('follow_ups.upcoming.0.type', 'meeting');
+        $this->assertCount(14, $d->json('trend'));
+        $this->assertSame(['created' => 1, 'qualified' => 1, 'worked' => 0], array_slice($d->json('trend.13'), 1));
         $this->getJson('/api/search?q=abc paper')->assertOk()
             ->assertJsonPath('companies.0.name_en', 'ABC Paper Mills')->assertJsonPath('companies.0.top_score', 91);
     }

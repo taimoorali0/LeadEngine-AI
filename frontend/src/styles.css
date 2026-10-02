@@ -1,43 +1,46 @@
 @import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
 
+/* LeadEngine brand: dark navy frame, purple accent, light workspace. */
 @theme {
-  --color-brand-50: #f5f2ff;
-  --color-brand-100: #eee8ff;
-  --color-brand-200: #ddd0ff;
-  --color-brand-300: #c4a8ff;
-  --color-brand-400: #a774ff;
-  --color-brand-500: #873cff;
-  --color-brand-600: #7125ee;
-  --color-brand-700: #5d1dc6;
-  --color-brand-800: #4c1aa0;
-  --color-brand-900: #3f197f;
-  --color-brand-950: #250c4c;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Arabic", sans-serif;
+  --color-brand-50: #f4f0ff;
+  --color-brand-100: #ebe3ff;
+  --color-brand-200: #d9c9ff;
+  --color-brand-300: #bea2ff;
+  --color-brand-400: #a16bff;
+  --color-brand-500: #8b3dff;
+  --color-brand-600: #6d35f2;
+  --color-brand-700: #5a25d3;
+  --color-brand-800: #4a1fad;
+  --color-brand-900: #3b1a87;
+  --color-brand-950: #11182d;
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @layer components {
-  .card { @apply rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.05)]; }
-  .card-soft { @apply rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4; }
-  .btn-primary { @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700; }
-  .btn-ghost { @apply btn border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50; }
-  .btn-dark { @apply btn bg-slate-950 text-white hover:bg-slate-800; }
-  .input { @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100; }
+  .card { @apply rounded-[22px] border border-slate-200/60 bg-white p-5; }
+  .card-soft { @apply rounded-[22px] bg-slate-100/70 p-4; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-ghost { @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50; }
+  .btn-dark { @apply btn bg-[#11182d] text-white hover:bg-[#1c2542]; }
+  .icon-btn { @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900; }
+  .input { @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100; }
   .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500; }
   .badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold; }
   .th { @apply px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-slate-500; }
   .td { @apply px-4 py-3 text-sm text-slate-700; }
-  .section-title { @apply text-lg font-bold tracking-tight text-slate-950; }
+  .section-title { @apply text-[17px] font-bold tracking-tight text-slate-950; }
   .muted { @apply text-sm text-slate-500; }
+  .page-title { @apply text-[28px] font-bold tracking-tight text-slate-950; }
 }
 
-html { background: #f7f8fc; }
-body {
-  @apply m-0 bg-[#f7f8fc] text-slate-800 antialiased;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+html { background: #11182d; }
+body { @apply m-0 bg-[#11182d] font-sans text-slate-800 antialiased; }
+lucide-icon { display: inline-flex; }
 
 * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
-::selection { background: #ddd0ff; color: #250c4c; }
+::selection { background: #d9c9ff; color: #11182d; }

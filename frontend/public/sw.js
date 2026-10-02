@@ -1,5 +1,5 @@
-const CACHE = 'leadengine-shell-v1';
-const STATIC = ['/','/leadengine-mark.svg','/leadengine-logo.svg','/manifest.webmanifest'];
+const CACHE = 'leadengine-shell-v2';
+const STATIC = ['/','/leadengine-mark.png','/leadengine-logo.png','/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC)).then(() => self.skipWaiting()));

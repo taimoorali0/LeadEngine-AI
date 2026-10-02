@@ -24,7 +24,20 @@ class CompanyController extends Controller
             ->when($request->boolean('has_website'), fn ($w) => $w->whereNotNull('website'))
             ->when($request->boolean('has_email'), fn ($w) => $w->has('emails'));
 
-        return response()->json($q->orderBy('name_en')->paginate($request->integer('per_page', 25)));
+        $dir = $request->query('dir') === 'desc' ? 'desc' : 'asc';
+        $expr = match ($request->query('sort')) {
+            'rating' => 'companies.rating',
+            'reviews' => 'companies.review_count',
+            'city' => '(select lower(name_en) from locations where locations.id = companies.location_id)',
+            'industry' => '(select lower(name_en) from industries where industries.id = companies.industry_id)',
+            'created_at' => 'companies.created_at',
+            'phones' => 'phones_count',
+            'emails' => 'emails_count',
+            default => 'lower(companies.name_en)',
+        };
+        $q->orderByRaw("{$expr} {$dir} nulls last")->orderBy('companies.id', $dir);
+
+        return response()->json($q->paginate($request->integer('per_page', 25)));
     }
 
     /** Company 360° profile (spec §25). */

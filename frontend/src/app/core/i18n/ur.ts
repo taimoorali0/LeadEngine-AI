@@ -519,4 +519,6 @@ export const UR: Record<string, string> = {
   "optional": "اختیاری",
   "selected": "منتخب",
   "{n} months": "{n} ماہ",
+  "Forward": "آگے",
+  "Added": "شامل کیا گیا",
 };

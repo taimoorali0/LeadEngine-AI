@@ -96,4 +96,28 @@ class LeadCrmTest extends TestCase
         $this->getJson('/api/search?q=abc paper')->assertOk()
             ->assertJsonPath('companies.0.name_en', 'ABC Paper Mills')->assertJsonPath('companies.0.top_score', 91);
     }
+
+    public function test_leads_and_companies_sort_by_any_column_with_empty_values_last(): void
+    {
+        $owner = $this->makeUser('owner');
+        $org = $owner->organization;
+        $b = $this->lead($org, 'Bravo Mills', ['score' => 40]);
+        $a = $this->lead($org, 'alpha Paper', ['score' => 90]);
+        $n = $this->lead($org, 'Charlie Tissue', ['score' => null]);
+        $this->actingAs($owner);
+
+        $ids = fn ($q) => array_column($this->getJson('/api/leads?'.$q)->assertOk()->json('data'), 'id');
+        $this->assertSame([$a->id, $b->id, $n->id], $ids('sort=score&dir=desc'));
+        $this->assertSame([$b->id, $a->id, $n->id], $ids('sort=score&dir=asc'), 'unscored stays last');
+        $this->assertSame([$a->id, $b->id, $n->id], $ids('sort=company&dir=asc'), 'case-insensitive name sort');
+        $this->assertSame([$n->id, $b->id, $a->id], $ids('sort=company&dir=desc'));
+        $this->assertSame([$n->id, $a->id, $b->id], $ids('sort=nonsense'), 'unknown column falls back to newest first');
+
+        $names = fn ($q) => array_column($this->getJson('/api/companies?'.$q)->assertOk()->json('data'), 'name_en');
+        $this->assertSame(['alpha Paper', 'Bravo Mills', 'Charlie Tissue'], $names(''));
+        $this->assertSame(['Charlie Tissue', 'Bravo Mills', 'alpha Paper'], $names('sort=name&dir=desc'));
+        $this->getJson('/api/leads?sort=city&dir=asc')->assertOk();
+        $this->getJson('/api/leads?sort=agent&dir=desc')->assertOk();
+        $this->getJson('/api/companies?sort=emails&dir=desc')->assertOk();
+    }
 }

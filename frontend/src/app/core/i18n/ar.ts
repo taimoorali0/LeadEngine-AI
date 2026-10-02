@@ -519,4 +519,6 @@ export const AR: Record<string, string> = {
   "optional": "اختياري",
   "selected": "محدد",
   "{n} months": "{n} أشهر",
+  "Forward": "للأمام",
+  "Added": "تاريخ الإضافة",
 };

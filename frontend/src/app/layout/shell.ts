@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -72,6 +72,12 @@ interface NavGroup { title: string; items: NavItem[] }
       <div class="min-w-0 md:ms-[270px]">
         <header class="sticky top-0 z-20 flex h-20 items-center gap-3 border-b border-slate-200/70 bg-white/90 px-4 backdrop-blur-xl md:px-6">
           <button class="btn-ghost !h-10 !w-10 !p-0 md:hidden" (click)="menuOpen.set(!menuOpen())" [attr.aria-label]="'Menu' | t">☰</button>
+
+          <!-- History navigation; arrows mirror in right-to-left languages. -->
+          <div class="flex shrink-0 items-center gap-1">
+            <button class="btn-ghost !h-10 !w-10 !p-0" (click)="location.back()" [title]="'Back' | t" [attr.aria-label]="'Back' | t">{{ i18n.dir() === 'rtl' ? '→' : '←' }}</button>
+            <button class="btn-ghost !h-10 !w-10 !p-0" (click)="location.forward()" [title]="'Forward' | t" [attr.aria-label]="'Forward' | t">{{ i18n.dir() === 'rtl' ? '←' : '→' }}</button>
+          </div>
 
           <div class="relative hidden max-w-xl flex-1 md:block">
             <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-slate-400">⌕</div>
@@ -149,6 +155,7 @@ export class Shell {
   protected i18n = inject(I18n);
   private api = inject(Api);
   private router = inject(Router);
+  protected location = inject(Location);
   private realtime = inject(Realtime);
   protected langs = LANGS;
   protected menuOpen = signal(false);

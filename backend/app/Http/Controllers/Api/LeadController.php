@@ -21,16 +21,35 @@ class LeadController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $sort = in_array($request->query('sort'), ['score', 'created_at', 'updated_at'], true) ? $request->query('sort') : 'created_at';
+        $q = $this->filtered($request);
+        $this->applySort($q, (string) $request->query('sort', 'created_at'), $request->query('dir') === 'asc' ? 'asc' : 'desc');
 
         return response()->json(
-            $this->filtered($request)
+            $q
                 ->with('company:id,name_en,website,location_id,industry_id', 'company.location:id,name_en',
                     'company.industry:id,name_en', 'assignee:id,name', 'campaign:id,name')
                 ->withCount(['company as phones_count' => fn ($q) => $q->join('company_phones', 'company_phones.company_id', '=', 'companies.id')])
-                ->orderByDesc($sort)->orderByDesc('id')
                 ->paginate($request->integer('per_page', 25))
         );
+    }
+
+    /**
+     * Column sorting for the leads table. Company fields are sorted through
+     * subqueries so the paginated select stays leads.*; empty values sort last
+     * in both directions, and id breaks ties so paging is stable.
+     */
+    private function applySort(Builder $q, string $sort, string $dir): void
+    {
+        $company = fn (string $column) => "(select {$column} from companies where companies.id = leads.company_id)";
+        $expr = match ($sort) {
+            'company' => 'lower('.$company('name_en').')',
+            'city' => '(select lower(name_en) from locations where locations.id = (select location_id from companies where companies.id = leads.company_id))',
+            'industry' => '(select lower(name_en) from industries where industries.id = (select industry_id from companies where companies.id = leads.company_id))',
+            'agent' => '(select lower(name) from users where users.id = leads.assigned_to)',
+            'score', 'status', 'quality', 'updated_at', 'next_follow_up_at' => "leads.{$sort}",
+            default => 'leads.created_at',
+        };
+        $q->orderByRaw("{$expr} {$dir} nulls last")->orderBy('leads.id', $dir);
     }
 
     /** Kanban board: leads grouped by pipeline status (spec §27). */

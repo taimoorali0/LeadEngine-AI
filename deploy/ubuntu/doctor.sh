@@ -20,7 +20,7 @@ if getent hosts github.com >/dev/null; then ok "DNS works"
 else
   bad "DNS broken — fixing (Google + Cloudflare DNS)"
   mkdir -p /etc/systemd/resolved.conf.d
-  printf '[Resolve]\nDNS=8.8.8.8 1.1.1.1\n' > /etc/systemd/resolved.conf.d/leadengine-dns.conf
+  printf '[Resolve]\nDNS=1.1.1.1#cloudflare-dns.com 8.8.8.8#dns.google\nDNSOverTLS=yes\n' > /etc/systemd/resolved.conf.d/leadengine-dns.conf
   systemctl restart systemd-resolved 2>/dev/null; sleep 2
   getent hosts github.com >/dev/null && ok "DNS fixed" || bad "DNS still broken: check the server's internet connection"
 fi

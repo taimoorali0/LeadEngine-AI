@@ -53,8 +53,8 @@ import { Api } from '../core/api';
     </div>
 
     @if (selected(); as o) {
-      <div class="fixed inset-0 z-50 flex justify-end bg-slate-950/35" (click)="selected.set(null)">
-        <aside class="h-full w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl" (click)="$event.stopPropagation()">
+      <div class="fixed inset-0 z-50 flex justify-end bg-slate-950/35" (keydown.escape)="selected.set(null)" tabindex="-1">
+        <aside class="h-full w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl" >
           <div class="mb-6 flex items-start justify-between gap-3">
             <div><div class="text-xs font-bold uppercase tracking-wider text-violet-600">Manage organization</div><h2 class="mt-1 text-2xl font-bold text-slate-950">{{ o.name }}</h2></div>
             <button class="btn-ghost !h-9 !w-9 !p-0" (click)="selected.set(null)">×</button>
@@ -91,8 +91,8 @@ import { Api } from '../core/api';
     }
 
     @if (creating()) {
-      <div class="fixed inset-0 z-50 flex justify-end bg-slate-950/35" (click)="creating.set(false)">
-        <aside class="h-full w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl" (click)="$event.stopPropagation()">
+      <div class="fixed inset-0 z-50 flex justify-end bg-slate-950/35" (keydown.escape)="creating.set(false)" tabindex="-1">
+        <aside class="h-full w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl" >
           <div class="mb-6 flex items-start justify-between gap-3">
             <div><div class="text-xs font-bold uppercase tracking-wider text-violet-600">Onboard a customer</div><h2 class="mt-1 text-2xl font-bold text-slate-950">New customer account</h2>
               <p class="mt-1 text-sm text-slate-500">Creates the company and its owner login. Send the email and password to the customer; they can add their team themselves.</p></div>

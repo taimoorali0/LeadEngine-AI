@@ -14,6 +14,14 @@ function params(p: Params = {}): HttpParams {
 export class Api {
   private http = inject(HttpClient);
 
+  outreach(page=1) { return this.http.get<any>('/api/outreach', { params: {page} }); }
+  outreachSettings() { return this.http.get<any>('/api/outreach/settings'); }
+  saveOutreachSettings(body: unknown) { return this.http.put<any>('/api/outreach/settings', body); }
+  draftOutreach(body: unknown) { return this.http.post<any>('/api/outreach/draft', body); }
+  approveOutreach(id: number, body: unknown) { return this.http.post<any>(`/api/outreach/${id}/approve`, body); }
+  stopOutreach(id: number) { return this.http.post<any>(`/api/outreach/${id}/stop`, {}); }
+  outreachOutcome(id: number, outcome: string) { return this.http.post<any>(`/api/outreach/${id}/outcome`, {outcome}); }
+
   dashboard() { return this.http.get<any>('/api/dashboard'); }
   search(q: string) { return this.http.get<{ companies: (Company & { top_score: number | null })[]; leads: Lead[] }>('/api/search', { params: params({ q }) }); }
 

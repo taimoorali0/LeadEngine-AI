@@ -49,6 +49,12 @@ export class AuthService {
     }
   }
 
+  /** Re-reads the profile so credits, plan and status stay current while the app is open. */
+  refresh(): void {
+    if (!this.token || !this.user()) return;
+    this.http.get<User>('/api/auth/me').subscribe({ next: u => this.user.set(u), error: () => {} });
+  }
+
   async logout(): Promise<void> {
     try { await firstValueFrom(this.http.post('/api/auth/logout', {})); } finally { this.clear(); }
   }

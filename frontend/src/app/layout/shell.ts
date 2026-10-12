@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DatePipe, Location } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged, filter, switchMap, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Api } from '../core/api';
 import { AuthService } from '../core/auth';
@@ -242,6 +242,11 @@ export class Shell {
       switchMap(q => (q.trim().length < 2 ? of(null) : this.api.search(q.trim()))),
       takeUntilDestroyed(),
     ).subscribe(r => this.results.set(r));
+
+    // Credits change in background jobs: refresh the balance on every page change and every 30s.
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => this.auth.refresh());
+    const creditTimer = setInterval(() => document.visibilityState === 'visible' && this.auth.refresh(), 30_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(creditTimer));
 
     this.loadNotifications();
     this.realtime.connect();

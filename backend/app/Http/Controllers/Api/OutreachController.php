@@ -96,6 +96,7 @@ class OutreachController extends Controller
         try {
         $draft = $engine->outreach(['company_name' => $lead->company->name_en, 'website' => $lead->company->website,
             'seller_name' => $config['seller_name'], 'offer' => $config['offer'], 'language' => $data['language']]);
+            abort_if(empty($draft['subject']) || empty($draft['body']), 502);
         } catch (\Throwable) {
             $billing->grant($org, $billing->cost('ai_analysis')['credits'], 'outreach_draft_failed');
             abort(502, 'AI drafting failed. Check the engine configuration. Draft credits were refunded.');

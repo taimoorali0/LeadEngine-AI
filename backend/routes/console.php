@@ -95,4 +95,4 @@ Schedule::call(function () {
         ->each(fn ($m) => \App\Jobs\SendOutreach::dispatch($m->id));
     \App\Models\OutreachMessage::withoutGlobalScopes()->where('status', 'sending')->where('attempted_at', '<', now()->subMinutes(5))
         ->update(['status' => 'unknown', 'error' => 'Worker interrupted during delivery. Verify provider status before contacting again.']);
-})->everyMinute()->withoutOverlapping();
+})->name('outreach:recover')->everyMinute()->withoutOverlapping();

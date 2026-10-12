@@ -36,11 +36,26 @@ import { Keyword, Location } from '../core/models';
               <div class="mt-4">
                 <div class="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">{{ 'Popular business types' | t }}</div>
                 <div class="flex flex-wrap gap-2">
-                  @for (bt of tx.business_types.slice(0, 14); track bt.id) {
+                  @for (bt of popularBusinessTypes(); track bt.id) {
                     <button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
                             (click)="chooseBusinessType(bt.name)">{{ bt.name }}</button>
                   }
                 </div>
+                <details class="mt-4 rounded-xl border border-slate-200 p-3">
+                  <summary class="cursor-pointer text-sm font-semibold">{{ 'View all business types' | t }}</summary>
+                  <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                    <select class="input" aria-label="Industry" [(ngModel)]="sectorFilter" name="sectorFilter">
+                      <option [ngValue]="null">{{ 'All industries' | t }}</option>
+                      @for (sector of tx.sectors; track sector.id) { <option [ngValue]="sector.id">{{ sector.name }}</option> }
+                    </select>
+                    <input class="input" aria-label="Search business types" [(ngModel)]="businessTypeSearch" name="businessTypeSearch" [placeholder]="'Search business types' | t" />
+                  </div>
+                  <div class="mt-3 flex max-h-64 flex-wrap gap-2 overflow-y-auto">
+                    @for (bt of filteredBusinessTypes(); track bt.id) {
+                      <button type="button" class="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-violet-50" (click)="chooseBusinessType(bt.name)">{{ bt.name }}</button>
+                    } @empty { <p class="text-sm text-slate-500">{{ 'No matching business types. Enter a custom target above.' | t }}</p> }
+                  </div>
+                </details>
               </div>
             }
 
@@ -219,6 +234,8 @@ export class CampaignBuilderPage {
   protected busy = signal(false);
   protected error = signal('');
 
+  sectorFilter: number | null = null;
+  businessTypeSearch = '';
   name = '';
   companyType = '';
   countryId: number | null = null;
@@ -247,6 +264,19 @@ export class CampaignBuilderPage {
     const city = this.cities().find(x => x.id === this.cityId)?.name_en;
     const country = this.countries().find(x => x.id === this.countryId)?.name_en;
     return [this.companyType || 'Campaign', city || country].filter(Boolean).join(' — ');
+  }
+
+  protected popularBusinessTypes() {
+    const names = ['Paper Manufacturing', 'Factory', 'Manufacturing Plant', 'Hotel', 'Supermarket', 'Bank', 'Insurance Company', 'Logistics Company', 'Construction Company', 'Wholesaler', 'Distributor', 'Hospital', 'School', 'Clothing Brand'];
+    return names.flatMap(name => this.taxonomy().business_types.filter((bt: any) => bt.name === name));
+  }
+
+  protected filteredBusinessTypes() {
+    const query = this.businessTypeSearch.trim().toLowerCase();
+    return this.taxonomy().business_types.filter((bt: any) =>
+      (this.sectorFilter === null || bt.sector_id === this.sectorFilter) &&
+      (!query || [bt.name, ...(bt.aliases ?? [])].some((term: string) => term.toLowerCase().includes(query)))
+    );
   }
 
   chooseBusinessType(name: string) { this.companyType = name; this.preview.set(null); this.suggest(); }

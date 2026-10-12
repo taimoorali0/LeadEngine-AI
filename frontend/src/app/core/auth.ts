@@ -1,7 +1,7 @@
-import { HttpClient, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpInterceptorFn, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { catchError, firstValueFrom, throwError } from 'rxjs';
+import { catchError, finalize, firstValueFrom, tap, throwError } from 'rxjs';
 import { User } from './models';
 
 const TOKEN_KEY = 'le_token';
@@ -59,6 +59,24 @@ export class AuthService {
     try { await firstValueFrom(this.http.post('/api/auth/logout', {})); } finally { this.clear(); }
   }
 
+  private creditsPending = false;
+
+  refreshCredits(): void {
+    const organizationId = this.user()?.organization?.id;
+    if (!organizationId || this.creditsPending) return;
+    this.creditsPending = true;
+    this.http.get<{organization_id: number; credit_balance: number; plan: string; credit_allowance: number; subscription_status: string}>('/api/billing/balance')
+      .pipe(finalize(() => { this.creditsPending = false; }))
+      .subscribe({
+        next: balance => this.user.update(user => {
+          if (!user?.organization || user.organization.id !== balance.organization_id) return user;
+          return {...user, credit_allowance: balance.credit_allowance, organization: {...user.organization,
+            credit_balance: balance.credit_balance, plan: balance.plan, subscription_status: balance.subscription_status}};
+        }),
+        error: () => { /* Keep the last known balance; the next poll retries. */ },
+      });
+  }
+
   clear(): void {
     try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ }
     this.user.set(null);
@@ -76,6 +94,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = auth.token;
   const authed = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }) : req;
   return next(authed).pipe(
+    tap(event => {
+      if (event instanceof HttpResponse && req.url.startsWith('/api/') && !req.url.startsWith('/api/auth/') && ['POST','PUT','PATCH','DELETE'].includes(req.method)) auth.refreshCredits();
+    }),
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401 && !req.url.endsWith('/auth/login')) {
         auth.clear();

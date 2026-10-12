@@ -9,12 +9,13 @@ import { apiError } from './account';
   <header><h1 class="text-3xl font-bold">AI Outreach</h1><p class="mt-2 text-sm text-slate-500">Research businesses, review relevant messages, and send through connected channels.</p></header>
   @if(error()){<p role="alert" class="rounded-xl bg-rose-50 p-4 text-rose-700">{{error()}}</p>}
   @if(notice()){<p role="status" class="rounded-xl bg-emerald-50 p-4">{{notice()}}</p>}
+  @if(setupNeeded()){<div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"><b>Step 0 — set up first:</b> enter <b>your company name</b> and <b>your services / offer</b> below and click <b>Save connections</b>. The AI uses them in every message.@if(!auth.can('settings.manage')){ Ask your company owner to do this.}</div>}
   @if(auth.can('settings.manage')){
-    <details class="card"><summary class="cursor-pointer font-semibold">Company offer & channel connections</summary>
+    <details class="card" [open]="setupNeeded()"><summary class="cursor-pointer font-semibold">Company offer & channel connections @if(setupNeeded()){<span class="badge ms-2 bg-amber-100 text-amber-700">Required</span>}</summary>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
-        <label><span class="label">Company name</span><input class="input" [(ngModel)]="config.seller_name" /></label>
+        <label><span class="label">Your company name *</span><input class="input" [(ngModel)]="config.seller_name" placeholder="e.g. Marg101 Solutions" /></label>
         <label><span class="label">Daily sending limit</span><input class="input" type="number" min="1" max="500" [(ngModel)]="config.daily_limit" /></label>
-        <label class="sm:col-span-2"><span class="label">Your services / offer</span><textarea class="input" rows="3" [(ngModel)]="config.offer"></textarea></label>
+        <label class="sm:col-span-2"><span class="label">Your services / offer *</span><textarea class="input" rows="3" [(ngModel)]="config.offer" placeholder="e.g. We build websites and run Google/Facebook ads for manufacturers, with a free audit."></textarea></label>
         <label class="sm:col-span-2"><input type="checkbox" [(ngModel)]="config.enabled" /> Enable approved message sending</label>
       </div>
       <h2 class="mt-5 font-semibold">Email (SMTP)</h2><div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -69,13 +70,15 @@ export class OutreachPage implements OnInit {
   secretFields=[{key:'token',label:'Access token'},{key:'app_secret',label:'App secret'},{key:'verify_token',label:'Webhook verify token'}];
   private searchSequence=0;
   ngOnInit(){this.load();this.searchLeads();if(this.auth.can('settings.manage'))this.api.outreachSettings().subscribe({next:r=>this.setConfig(r),error:e=>this.fail(e)});}
-  setConfig(r:any){this.config={...this.config,...r.config,email:{port:587,...r.config.email},whatsapp:{...r.config.whatsapp}};this.webhook.set(r.webhook_url);}
+  savedSetup=signal(true);
+  setupNeeded(){return !this.savedSetup();}
+  setConfig(r:any){this.config={...this.config,...r.config,email:{port:587,...r.config.email},whatsapp:{...r.config.whatsapp}};this.webhook.set(r.webhook_url);this.savedSetup.set(!!(r.config?.seller_name&&r.config?.offer));}
   load(){this.api.outreach(this.page).subscribe({next:r=>{this.messages.set(r.data);this.lastPage=r.last_page;},error:e=>this.fail(e)});}
-  searchLeads(){const seq=++this.searchSequence;this.api.leads({q:this.query,per_page:50}).subscribe({next:r=>{if(seq===this.searchSequence)this.leads.set(r.data);},error:e=>this.fail(e)});}
+  searchLeads(){const seq=++this.searchSequence;this.api.leads({q:this.query,per_page:50}).subscribe({next:r=>{if(seq!==this.searchSequence)return;this.leads.set(r.data);if(this.query.trim()&&r.data.length===1&&this.leadId!==r.data[0].id){this.leadId=r.data[0].id;this.selectLead();}},error:e=>this.fail(e)});}
   selectLead(){this.company.set(null);this.recipient='';const id=this.leadId;if(id)this.api.lead(id).subscribe({next:l=>{if(id===this.leadId)this.company.set(l.company);},error:e=>this.fail(e)});}
   contacts():string[]{return this.channel==='email'?(this.company()?.emails??[]).map((x:any)=>x.email):(this.company()?.phones??[]).map((x:any)=>x.normalized).filter(Boolean);}
   fail(e:any){this.busy.set(false);this.error.set(apiError(e));}
-  saveConfig(){this.busy.set(true);this.error.set('');this.api.saveOutreachSettings(this.config).subscribe({next:r=>{this.setConfig(r);this.busy.set(false);this.notice.set('Connections saved.');},error:e=>this.fail(e)});}
+  saveConfig(){if(!this.config.seller_name?.trim()||(this.config.offer?.trim().length??0)<5){this.error.set('Enter your company name and offer (at least 5 characters).');return;}this.busy.set(true);this.error.set('');this.api.saveOutreachSettings(this.config).subscribe({next:r=>{this.setConfig(r);this.busy.set(false);this.error.set('');this.notice.set('Saved. You can now research & draft with AI.');},error:e=>this.fail(e)});}
   generate(){this.busy.set(true);this.error.set('');this.notice.set('');this.api.draftOutreach({lead_id:this.leadId,channel:this.channel,recipient:this.recipient,language:this.language}).subscribe({next:m=>{this.edit(m);this.busy.set(false);this.load();},error:e=>this.fail(e)});}
   edit(m:any){this.selected.set(structuredClone(m));this.permissionEvidence='';this.templateName='';this.templateValues='';}
   approve(){const m=this.selected();const values=this.templateValues.split('\n').map(x=>x.trim()).filter(Boolean);const body:any={subject:m.subject,body:m.body,permission_evidence:this.permissionEvidence};if(m.channel==='whatsapp')body.template={name:this.templateName,language:{code:this.templateLanguage},...(values.length?{components:[{type:'body',parameters:values.map(text=>({type:'text',text}))}]}:{})};this.busy.set(true);this.error.set('');this.api.approveOutreach(m.id,body).subscribe({next:()=>{this.selected.set(null);this.busy.set(false);this.notice.set('Approved. Check message history for provider status.');this.load();},error:e=>this.fail(e)});}

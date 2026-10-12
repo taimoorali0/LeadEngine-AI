@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Route;
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('auth/2fa/challenge', [AuthController::class, 'twoFactorChallenge'])->middleware('throttle:login');
 
+Route::match(['get', 'post'], 'outreach/unsubscribe/{token}', [\App\Http\Controllers\Api\OutreachWebhookController::class, 'unsubscribe'])->middleware('throttle:60,1');
+Route::match(['get', 'post'], 'outreach/whatsapp/{organization}', [\App\Http\Controllers\Api\OutreachWebhookController::class, 'whatsapp']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::put('auth/me', [AuthController::class, 'updateProfile']);
@@ -29,6 +32,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/2fa/setup', [AuthController::class, 'twoFactorSetup']);
     Route::post('auth/2fa/confirm', [AuthController::class, 'twoFactorConfirm']);
     Route::post('auth/2fa/disable', [AuthController::class, 'twoFactorDisable']);
+
+    Route::get('outreach', [\App\Http\Controllers\Api\OutreachController::class, 'index']);
+    Route::get('outreach/settings', [\App\Http\Controllers\Api\OutreachController::class, 'settings']);
+    Route::put('outreach/settings', [\App\Http\Controllers\Api\OutreachController::class, 'saveSettings']);
+    Route::post('outreach/draft', [\App\Http\Controllers\Api\OutreachController::class, 'draft'])->middleware('throttle:10,1');
+    Route::post('outreach/{message}/approve', [\App\Http\Controllers\Api\OutreachController::class, 'approve']);
+    Route::post('outreach/{message}/stop', [\App\Http\Controllers\Api\OutreachController::class, 'stop']);
+    Route::post('outreach/{message}/outcome', [\App\Http\Controllers\Api\OutreachController::class, 'outcome']);
 
     Route::get('dashboard', DashboardController::class);
     Route::get('reports', ReportController::class);

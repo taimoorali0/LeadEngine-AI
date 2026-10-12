@@ -16,6 +16,19 @@ use Illuminate\Validation\Rule;
 
 class BillingController extends Controller
 {
+    public function balance(Request $request, Billing $billing): JsonResponse
+    {
+        $org = $request->user()->organization?->fresh();
+        abort_unless($org, 404, 'Organization workspace required.');
+        return response()->json([
+            'organization_id' => $org->id,
+            'credit_balance' => (int) $org->credit_balance,
+            'plan' => $org->plan,
+            'credit_allowance' => $billing->plan($org)['monthly_credits'],
+            'subscription_status' => $org->subscription_status,
+        ])->header('Cache-Control', 'no-store');
+    }
+
     public function show(Request $request, Billing $billing): JsonResponse
     {
         abort_unless($request->user()->organization, 404, 'Platform administrators have no customer plan. Use the platform billing pages.');

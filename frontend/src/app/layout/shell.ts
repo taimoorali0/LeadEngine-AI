@@ -243,12 +243,13 @@ export class Shell {
       takeUntilDestroyed(),
     ).subscribe(r => this.results.set(r));
 
-    // Credits change in background jobs: refresh the balance on every page change and every 30s.
-    this.router.events.pipe(filter(e => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => this.auth.refresh());
-    const creditTimer = setInterval(() => document.visibilityState === 'visible' && this.auth.refresh(), 30_000);
+    // Credits change in background jobs: refresh the balance on every page change and every 15s.
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => this.auth.refreshCredits());
+    const creditTimer = setInterval(() => document.visibilityState === 'visible' && this.auth.refreshCredits(), 15_000);
     inject(DestroyRef).onDestroy(() => clearInterval(creditTimer));
 
     this.loadNotifications();
+    this.auth.refreshCredits();
     this.realtime.connect();
     const stop = this.realtime.onNotification(() => this.loadNotifications());
     const timer = setInterval(() => !this.realtime.connected() && this.loadNotifications(), 60_000);

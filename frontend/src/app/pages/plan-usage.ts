@@ -18,7 +18,7 @@ import { AuthService } from '../core/auth';
     @if (b(); as b) {
       <div class="grid gap-4 md:grid-cols-3">
         <div class="card"><div class="label">{{ 'Current plan' | t }}</div><div class="text-2xl font-bold text-slate-950">{{ b.plan.name }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Paid until' | t }} {{ b.renews_at ? (b.renews_at | date:'mediumDate') : '—' }}</div></div>
-        <div class="card"><div class="label">{{ 'Credit balance' | t }}</div><div class="text-2xl font-bold text-violet-700 tabular-nums">{{ b.credit_balance | number }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Usage-based discovery and enrichment credits' | t }}</div></div>
+        <div class="card"><div class="label">{{ 'Credit balance' | t }}</div><div class="text-2xl font-bold text-violet-700 tabular-nums">{{ (auth.user()?.organization?.credit_balance ?? b.credit_balance) | number }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Usage-based discovery and enrichment credits' | t }}</div></div>
         <div class="card"><div class="label">{{ 'Active users' | t }}</div><div class="text-2xl font-bold text-slate-950 tabular-nums">{{ b.users }} / {{ b.plan.users ?? '∞' }}</div><div class="mt-1 text-sm text-slate-500">{{ 'Organization seats' | t }}</div></div>
       </div>
 
@@ -46,12 +46,17 @@ import { AuthService } from '../core/auth';
             }
           </div>
 
-          <h3 class="mt-6 mb-3 font-semibold text-slate-900">{{ 'Usage this month' | t }}</h3>
+          <div class="mt-6 mb-3 flex items-center justify-between"><h3 class="font-semibold text-slate-900">{{ 'Usage this month' | t }}</h3><button class="btn-ghost" (click)="reload()">{{ 'Refresh' | t }}</button></div>
           @for (u of b.usage_this_month; track u.kind) {
             <div class="flex items-center justify-between border-b border-slate-100 py-2.5 text-sm">
               <span>{{ label(u.kind) }}</span><b class="tabular-nums">{{ u.credits | number }} {{ 'credits' | t }}</b>
             </div>
           } @empty { <p class="text-sm text-slate-500">{{ 'No usage yet.' | t }}</p> }
+          <h3 class="mt-6 mb-3 font-semibold text-slate-900">Credit transactions</h3>
+          <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-start text-slate-500"><th class="p-2 text-start">Date</th><th class="p-2 text-start">Action</th><th class="p-2 text-end">Change</th><th class="p-2 text-end">Balance</th></tr></thead><tbody>
+          @for(tx of b.transactions; track tx.id){<tr class="border-t border-slate-100"><td class="p-2">{{ tx.created_at | date:'short' }}</td><td class="p-2">{{ label(tx.reason) }}</td><td class="p-2 text-end">{{ tx.amount | number }}</td><td class="p-2 text-end">{{ tx.balance_after | number }}</td></tr>}
+          @empty{<tr><td colspan="4" class="p-2 text-slate-500">No credit transactions yet.</td></tr>}
+          </tbody></table></div>
         </section>
 
         <aside class="space-y-5">
@@ -134,7 +139,8 @@ import { AuthService } from '../core/auth';
 })
 export class PlanUsagePage implements OnInit {
   private api = inject(Api);
-  protected canRequest = inject(AuthService).can('billing.manage');
+  protected auth = inject(AuthService);
+  protected canRequest = this.auth.can('billing.manage');
   months = 12;
   b = signal<any>(null);
   showForm = signal(false);
@@ -153,7 +159,7 @@ export class PlanUsagePage implements OnInit {
   paymentDate = new Date().toISOString().slice(0, 10);
 
   ngOnInit() { this.reload(); }
-  reload() { this.api.billing().subscribe(x => this.b.set(x)); }
+  reload() { this.auth.refreshCredits(); this.api.billing().subscribe(x => this.b.set(x)); }
   entries = (o: Record<string, any>) => Object.entries(o ?? {}).map(([key, value]) => ({ key, value: value as any }));
   label = (s: string) => (s ?? '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 

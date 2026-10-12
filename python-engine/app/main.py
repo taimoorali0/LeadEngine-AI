@@ -1,13 +1,14 @@
 """LeadEngine Python data engine (FastAPI). Called by the Laravel API/workers."""
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.models import (
     Analysis, AnalyzeRequest,
     CompanyRecord, DuplicateMatch, NormalizedPhone, ScoreResult, ScoringInput, ScoringRules, WebsiteExtraction,
 )
+from app.services.outreach import OutreachRequest, OutreachDraft, draft_outreach
 from app.services.ai import analyze
 from app.services.dedup import find_duplicates
 from app.services.keywords import generate_keywords
@@ -76,3 +77,11 @@ async def enrich(req: EnrichRequest):
 @app.post("/ai/analyze", response_model=Analysis)
 async def ai_analyze(req: AnalyzeRequest):
     return await analyze(req)
+
+
+@app.post('/ai/outreach', response_model=OutreachDraft)
+async def ai_outreach(req: OutreachRequest):
+    try:
+        return await draft_outreach(req)
+    except Exception:
+        raise HTTPException(status_code=502, detail='AI drafting unavailable. Check the AI key and engine logs.')

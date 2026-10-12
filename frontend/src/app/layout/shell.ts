@@ -188,6 +188,7 @@ export class Shell {
       { path: '/leads', label: 'Leads', icon: UserRoundSearch },
       { path: '/companies', label: 'Companies', icon: Building2 },
       { path: '/pipeline', label: 'CRM Pipeline', icon: Columns3 },
+      { path: '/outreach', label: 'AI Outreach', icon: PhoneCall, perm: 'notes.create' },
       { path: '/follow-ups', label: 'Follow-Ups', icon: PhoneCall },
     ] },
     { title: 'Prospecting', items: [

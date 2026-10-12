@@ -25,6 +25,7 @@ export const routes: Routes = [
       { path: 'companies/:id', ...page(() => import('./pages/company-detail').then(m => m.CompanyDetailPage)) },
       { path: 'follow-ups', ...page(() => import('./pages/follow-ups').then(m => m.FollowUpsPage)) },
       { path: 'reports', ...page(() => import('./pages/reports').then(m => m.ReportsPage)) },
+      { path: 'outreach', ...page(() => import('./pages/outreach').then(m => m.OutreachPage)) },
       { path: 'automation', ...page(() => import('./pages/automation').then(m => m.AutomationPage)) },
       { path: 'team', ...page(() => import('./pages/team').then(m => m.TeamPage)) },
       { path: 'settings', ...page(() => import('./pages/settings').then(m => m.SettingsPage)) },

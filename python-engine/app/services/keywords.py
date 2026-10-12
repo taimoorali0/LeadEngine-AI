@@ -17,10 +17,6 @@ SEED_TERMS: dict[str, list[str]] = {
         "Boutiques", "Clothing Stores",
     ],
     "fashion brand": ["Clothing Brand", "Apparel Brand", "Ready-to-Wear", "Designer Clothing", "Boutique"],
-    "paper manufacturer": [
-        "Paper Mill", "Paper Factory", "Tissue Manufacturer", "Paper Products Manufacturer",
-        "Packaging Manufacturer", "Corrugated Manufacturer", "Paper Converting Company",
-    ],
     "real estate agency": [
         "Property Dealer", "Property Consultant", "Estate Agent", "Property Agent", "Realtor",
         "Real Estate Developer", "Builders",
@@ -43,6 +39,67 @@ SEED_TERMS: dict[str, list[str]] = {
     "car dealer": ["Auto Dealer", "Vehicle Dealer", "Car Showroom"],
     "security company": ["Security Services", "Guarding Company", "CCTV Company", "Surveillance Company"],
 }
+
+SEED_TERMS.update({'factory': ['Manufacturing Factory', 'Industrial Factory'],
+ 'manufacturing plant': ['Production Plant', 'Industrial Plant'],
+ 'paper manufacturing': ['Paper Manufacturer', 'Paper Factory', 'Paper Plant', 'Paper Mill'],
+ 'pulp mill': ['Pulp Factory', 'Pulp Manufacturing Plant'],
+ 'tissue manufacturing': ['Tissue Manufacturer', 'Tissue Factory', 'Tissue Plant'],
+ 'tissue converting': ['Tissue Converting Factory', 'Tissue Converting Plant'],
+ 'corrugated packaging': ['Corrugated Factory', 'Corrugated Packaging Plant'],
+ 'packaging factory': ['Packaging Manufacturer', 'Packaging Plant'],
+ 'textile mill': ['Textile Factory', 'Textile Manufacturing Plant'],
+ 'food processing plant': ['Food Factory', 'Food Manufacturer'],
+ 'plastics factory': ['Plastic Manufacturer', 'Plastics Plant'],
+ 'pharmaceutical plant': ['Pharmaceutical Factory', 'Pharmaceutical Manufacturer'],
+ 'chemical plant': ['Chemical Factory', 'Chemical Manufacturer'],
+ 'cement plant': ['Cement Factory', 'Cement Manufacturer'],
+ 'steel mill': ['Steel Factory', 'Steel Manufacturing Plant'],
+ 'automotive factory': ['Automotive Manufacturing Plant', 'Vehicle Manufacturer'],
+ 'hotel': ['Hotels'],
+ 'resort': ['Resorts'],
+ 'motel': ['Motels'],
+ 'guest house': ['Guest Houses'],
+ 'hostel': ['Hostels'],
+ 'serviced apartment': ['Serviced Apartments'],
+ 'vacation rental': ['Holiday Rental'],
+ 'supermarket': ['Supermarkets'],
+ 'grocery store': ['Grocery Stores'],
+ 'clothing store': ['Clothing Stores'],
+ 'electronics store': ['Electronics Stores'],
+ 'furniture store': ['Furniture Stores'],
+ 'hardware store': ['Hardware Stores'],
+ 'online retailer': ['Online Retailers'],
+ 'bank': ['Banks'],
+ 'insurance company': ['Insurance Companies'],
+ 'insurance broker': ['Insurance Brokerage'],
+ 'microfinance institution': ['Microfinance Company'],
+ 'financing company': ['Finance Company'],
+ 'payment service': ['Payment Provider'],
+ 'logistics company': ['Freight Company', '3PL'],
+ 'freight forwarder': ['Freight Forwarding Company'],
+ 'trucking company': ['Road Freight Company'],
+ 'courier service': ['Courier Company'],
+ 'shipping company': ['Shipping Line'],
+ 'warehouse': ['Warehousing Company'],
+ 'delivery service': ['Last Mile Delivery'],
+ 'passenger transport': ['Passenger Transport Company'],
+ 'construction company': ['General Contractor', 'Construction Contractor'],
+ 'civil contractor': ['Civil Engineering Company'],
+ 'builder': ['Building Contractor'],
+ 'mep contractor': ['Mechanical Electrical Plumbing Contractor'],
+ 'road contractor': ['Road Construction Company'],
+ 'renovation company': ['Renovation Contractor'],
+ 'infrastructure contractor': ['Infrastructure Construction Company'],
+ 'fmcg distributor': ['Consumer Goods Distributor'],
+ 'industrial supplier': ['Industrial Equipment Distributor'],
+ 'medical distributor': ['Medical Supplies Distributor'],
+ 'building material wholesaler': ['Building Materials Distributor'],
+ 'electronics wholesaler': ['Electronics Distributor'],
+ 'importer & exporter': ['Import Export Company'],
+ 'wholesaler': ['Wholesale Company'],
+ 'distributor': ['Distribution Company'],
+ 'paper manufacturer': ['Paper Manufacturer', 'Paper Factory', 'Paper Plant', 'Paper Mill']})
 
 ARABIC_TERMS: dict[str, list[str]] = {
     "paper manufacturer": ["مصنع ورق", "مصنع مناديل", "مصنع كرتون"],
@@ -78,7 +135,8 @@ def generate_keywords(company_type: str, languages: list[str] | None = None) -> 
     # Singular/plural normalization for common user phrasing.
     if key.endswith("s") and key[:-1] in SEED_TERMS:
         out += SEED_TERMS[key[:-1]]
-    out += _variants(clean)
+    if key not in SEED_TERMS and not (key.endswith("s") and key[:-1] in SEED_TERMS):
+        out += _variants(clean)
     if "ar" in languages:
         out += ARABIC_TERMS.get(key, [])
     seen: set[str] = set()

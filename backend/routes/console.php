@@ -87,3 +87,12 @@ Schedule::command('followups:remind')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('campaigns:refresh')->hourly()->withoutOverlapping();
 Schedule::command('subscriptions:expire')->dailyAt('00:30');
 Schedule::command('credits:refill')->dailyAt('00:45');
+
+
+// Recover queued dispatches without re-sending messages already claimed by a worker.
+Schedule::call(function () {
+    \App\Models\OutreachMessage::withoutGlobalScopes()->where('status', 'queued')->where('updated_at', '<', now()->subMinutes(2))->limit(100)->get()
+        ->each(fn ($m) => \App\Jobs\SendOutreach::dispatch($m->id));
+    \App\Models\OutreachMessage::withoutGlobalScopes()->where('status', 'sending')->where('attempted_at', '<', now()->subMinutes(5))
+        ->update(['status' => 'unknown', 'error' => 'Worker interrupted during delivery. Verify provider status before contacting again.']);
+})->everyMinute()->withoutOverlapping();
